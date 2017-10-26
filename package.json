@@ -1,0 +1,19 @@
+{
+  "name": "serverless-plugin-stackstorm",
+  "version": "1.0.0-pre.0",
+  "description": "Running StackStorm actions serverlessly",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kirill Enykeev <enykeev@stackstorm.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "axios": "0.16.2",
+    "fs-extra": "4.0.2",
+    "js-yaml": "3.10.0",
+    "lodash": "4.17.4",
+    "nodegit": "0.20.2",
+    "nopy": "0.2.3"
+  }
+}
