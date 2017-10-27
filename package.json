@@ -15,5 +15,9 @@
     "lodash": "4.17.4",
     "nodegit": "0.20.2",
     "nopy": "0.2.3"
+  },
+  "devDependencies": {
+    "eslint": "4.9.0",
+    "eslint-plugin-async-await": "0.0.0"
   }
 }
