@@ -1,10 +1,4 @@
-import sys
 import os
-
-sys.path.append(os.path.abspath('~st2'))
-sys.path.append(os.path.abspath('~st2/deps/lib/python2.7/site-packages'))
-sys.path.append(os.path.abspath('~st2/deps/lib64/python2.7/site-packages'))
-
 import json
 import yaml
 import logging

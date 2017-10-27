@@ -9,6 +9,12 @@ const child_process = require('child_process')
 
 
 const MAGIC_FOLDER = '~st2';
+const INTERNAL_MAGIC_FOLDER = `/var/task/${MAGIC_FOLDER}`;
+const DEFAULT_PYTHON_PATH = [
+  `${INTERNAL_MAGIC_FOLDER}`,
+  `${INTERNAL_MAGIC_FOLDER}/deps/lib/python2.7/site-packages`,
+  `${INTERNAL_MAGIC_FOLDER}/deps/lib64/python2.7/site-packages`
+];
 
 const INDEX_URL = 'https://index.stackstorm.org/v1/index.json';
 
@@ -38,11 +44,18 @@ class StackstormPlugin {
           throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
         }
 
-        const actionMeta = await this.getAction(func.st2_function);
+        const [ packName, actionName ] = func.st2_function.split('.');
+        const actionMeta = await this.getAction(packName, actionName);
 
         func.handler = `${MAGIC_FOLDER}/handler.stackstorm`;
         func.environment = func.environment || {};
         func.environment.ST2_ACTION = func.st2_function;
+        func.environment.PYTHONPATH = DEFAULT_PYTHON_PATH
+          .concat([
+            `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packName}/lib/python2.7/site-packages`,
+            `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packName}/lib64/python2.7/site-packages`
+          ])
+          .join(':');
         needCommons = true;
 
         this.serverless.service.functions[key] = func;
@@ -61,9 +74,7 @@ class StackstormPlugin {
     }
   }
 
-  async getAction(ref) {
-    const [ packName, actionName ] = ref.split('.');
-
+  async getAction(packName, actionName) {
     const index = await this.getIndex();
     const packMeta = index.packs[packName];
 
@@ -108,7 +119,7 @@ class StackstormPlugin {
 
   async startDocker(dockerImage) {
     const args = ['run']
-      .concat(['-d', '--rm', '-v', `${path.resolve('./')}/${MAGIC_FOLDER}:/st2`, dockerImage])
+      .concat(['-d', '--rm', '-v', `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`, dockerImage])
       .concat(['tail', '-f', '/dev/null'])
       ;
     const spawnOptions = {
@@ -214,26 +225,26 @@ class StackstormPlugin {
 
   async installCommonsDockerized() {
     this.serverless.cli.log('Spin Docker container');
+    const st2common_pkg = 'git+https://github.com/stackstorm/st2.git@more_st2common_changes#egg=st2common&subdirectory=st2common';
     const image = 'lambci/lambda:build-python2.7';
     const dockerId = await this.startDocker(image);
 
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
     if (!depsExists) {
       this.serverless.cli.log('Installing StackStorm adapter dependencies');
-      const pkg = 'git+https://github.com/stackstorm/st2.git@more_st2common_changes#egg=st2common&subdirectory=st2common';
-      const prefix = '/st2/deps';
-      await this.execDocker(dockerId, ['pip', 'install', '-I', pkg, '--prefix', prefix])
+      const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
+      await this.execDocker(dockerId, ['pip', 'install', '-I', st2common_pkg, '--prefix', prefix])
     }
 
     this.serverless.cli.log('Creating pack venv');
-    const packs = await fs.readdir(`${MAGIC_FOLDER}/packs`);
+    const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
     for (let pack in packs) {
-      const prefix = `/st2/virtualenvs/${packs[pack]}`;
+      const prefix = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packs[pack]}`;
       await this.execDocker(dockerId, ['virtualenv', prefix])
 
-      const pip = `/st2/virtualenvs/${packs[pack]}/bin/pip`;
-      const requirements = `/st2/packs/${packs[pack]}/requirements.txt`;
+      const pip = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packs[pack]}/bin/pip`;
+      const requirements = `${INTERNAL_MAGIC_FOLDER}/packs/${packs[pack]}/requirements.txt`;
       await this.execDocker(dockerId, [pip, 'install', '-I',  '-r', requirements]);
     }
 
