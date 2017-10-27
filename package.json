@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-stackstorm",
-  "version": "1.0.0-pre.0",
+  "version": "1.0.0",
   "description": "Running StackStorm actions serverlessly",
   "main": "index.js",
   "scripts": {
