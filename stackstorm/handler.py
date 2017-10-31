@@ -74,6 +74,7 @@ ACTIONS = _load_actions()
 def _get_runner(runnertype_db, action_db):
     runner = get_runner(runnertype_db.runner_module)
 
+    runner._sandbox = False
     runner.runner_type_db = runnertype_db
     runner.action = action_db
     runner.action_name = action_db.name
