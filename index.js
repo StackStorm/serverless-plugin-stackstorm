@@ -5,7 +5,7 @@ const yaml = require('js-yaml');
 const nopy = require('nopy');
 
 const { getIndex } = require('./lib/index');
-const { startDocker, execDocker, stopDocker } = require('./lib/docker');
+const { pullDockerImage, startDocker, execDocker, stopDocker } = require('./lib/docker');
 
 
 const MAGIC_FOLDER = '~st2';
@@ -116,9 +116,12 @@ class StackstormPlugin {
   }
 
   async installCommonsDockerized() {
-    this.serverless.cli.log('Spin Docker container');
+    this.serverless.cli.log('Spin Docker container to build python dependencies');
     const st2common_pkg = 'git+https://github.com/stackstorm/st2.git@more_st2common_changes#egg=st2common&subdirectory=st2common';
     const image = 'lambci/lambda:build-python2.7';
+
+    await pullDockerImage(image);
+
     const dockerId = await startDocker(image, `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`);
 
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
@@ -128,20 +131,25 @@ class StackstormPlugin {
       await execDocker(dockerId, ['pip', 'install', '-I', st2common_pkg, '--prefix', prefix]);
     }
 
-    this.serverless.cli.log('Creating pack venv');
+    this.serverless.cli.log('Creating virtual environments for packs');
     const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
     for (let pack in packs) {
       const prefix = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packs[pack]}`;
-      await execDocker(dockerId, ['virtualenv', prefix]);
-
-      const pip = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packs[pack]}/bin/pip`;
+      const pythonpath = `${prefix}/lib/python2.7/site-packages`;
       const requirements = `${INTERNAL_MAGIC_FOLDER}/packs/${packs[pack]}/requirements.txt`;
-      await execDocker(dockerId, [pip, 'install', '-I',  '-r', requirements]);
+      await execDocker(dockerId, ['mkdir', '-p', pythonpath]);
+      await execDocker(dockerId, [
+        '/bin/bash', '-c',
+        `PYTHONPATH=$PYTHONPATH:${pythonpath} ` +
+        `pip --isolated install -r ${requirements} --prefix ${prefix} --src ${prefix}/src`
+      ]);
     }
 
     this.serverless.cli.log('Stop Docker container');
     await stopDocker(dockerId);
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
   }
 }
 
