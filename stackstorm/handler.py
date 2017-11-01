@@ -2,9 +2,11 @@ import os
 import json
 import yaml
 import logging
+import six
 from oslo_config import cfg
 
 from st2common.bootstrap.actionsregistrar import ActionsRegistrar
+from st2common.constants.pack import CONFIG_SCHEMA_FILE_NAME
 from st2common.constants.runners import MANIFEST_FILE_NAME
 from st2common.constants.system import VERSION_STRING
 from st2common.content.loader import ContentPackLoader, RunnersLoader, MetaLoader
@@ -12,9 +14,11 @@ from st2common.content import utils as content_utils
 from st2common.exceptions import actionrunner
 from st2common.exceptions.param import ParamException
 from st2common.models.api.action import ActionAPI, RunnerTypeAPI
+from st2common.models.api.pack import ConfigSchemaAPI
 from st2common.models.db.action import ActionDB
 from st2common.models.db.runner import RunnerTypeDB
 from st2common.runners.base import get_runner
+from st2common.util.pack import validate_config_against_schema
 from st2common.util import param as param_utils
 import st2common.validators.api.action as action_validator
 
@@ -67,9 +71,37 @@ def _load_actions():
     return actions
 
 
+def _load_config_schemas():
+    config_schemas = {}
+
+    packs = ContentPackLoader().get_packs(content_utils.get_packs_base_paths())
+
+    for pack_name, pack_dir in six.iteritems(packs):
+        config_schema_path = os.path.join(pack_dir, CONFIG_SCHEMA_FILE_NAME)
+
+        if not os.path.isfile(config_schema_path):
+            # Note: Config schema is optional
+            continue
+
+        values = MetaLoader().load(config_schema_path)
+
+        if not values:
+            raise ValueError('Config schema "%s" is empty and invalid.' % (config_schema_path))
+
+        content = {}
+        content['pack'] = pack_name
+        content['attributes'] = values
+
+        config_schema_api = ConfigSchemaAPI(**content)
+        config_schema_api = config_schema_api.validate()
+        config_schemas[pack_name] = values
+
+    return config_schemas
+
+
 RUNNERS = _load_runnertypes()
 ACTIONS = _load_actions()
-
+CONFIG_SCHEMAS = _load_config_schemas()
 
 def _get_runner(runnertype_db, action_db):
     runner = get_runner(runnertype_db.runner_module)
@@ -101,6 +133,14 @@ def stackstorm(event, context):
     runnertype_db = RUNNERS[action_db.runner_type['name']]
 
     runner = _get_runner(runnertype_db, action_db)
+
+    config_schema = CONFIG_SCHEMAS.get(action_db.pack, None)
+    config_values = os.environ.get('ST2_CONFIG', None)
+    if config_schema and config_values:
+        runner._config = validate_config_against_schema(config_schema=config_schema,
+                                                        config_object=json.loads(config_values),
+                                                        config_path=None,
+                                                        pack_name=action_db.pack)
 
     # Finalized parameters are resolved and then rendered. This process could
     # fail. Handle the exception and report the error correctly.

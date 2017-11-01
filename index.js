@@ -48,6 +48,9 @@ class StackstormPlugin {
         func.handler = `${MAGIC_FOLDER}/handler.stackstorm`;
         func.environment = func.environment || {};
         func.environment.ST2_ACTION = func.st2_function;
+        if (func.st2_config) {
+          func.environment.ST2_CONFIG = JSON.stringify(func.st2_config);
+        }
         func.environment.PYTHONPATH = DEFAULT_PYTHON_PATH
           .concat([
             `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packName}/lib/python2.7/site-packages`,
