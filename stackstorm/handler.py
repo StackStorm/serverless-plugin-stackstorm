@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import yaml
 import logging
@@ -25,6 +26,8 @@ import st2common.validators.api.action as action_validator
 import config
 
 LOG = logging.getLogger(__name__)
+
+del sys.argv[1:]
 
 cfg.CONF(args=('--config-file', '~st2/st2.conf'), version=VERSION_STRING)
 
