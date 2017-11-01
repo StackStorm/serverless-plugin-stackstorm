@@ -1,6 +1,7 @@
 # Serverless StackStorm plugin
 
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
+[![npm version](https://badge.fury.io/js/serverless-plugin-stackstorm.svg)](https://badge.fury.io/js/serverless-plugin-stackstorm)
 
 Run StackStorm actions serverless and stackstormless.
 
