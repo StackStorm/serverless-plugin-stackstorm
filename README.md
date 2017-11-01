@@ -25,6 +25,8 @@ provider:
 functions:
   get_issue:
     st2_function: github.get_issue # `st2_function` notation replaces `handler`. The rest is the same.
+    st2_config:
+      user: enykeev
     events:
       - http:
           method: GET
