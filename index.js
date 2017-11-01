@@ -109,7 +109,7 @@ class StackstormPlugin {
       this.serverless.cli.log('Installing StackStorm adapter dependencies');
       await nopy.spawnPython([
         '-m', 'pip', 'install',
-        'git+https://github.com/stackstorm/st2.git@more_st2common_changes#egg=st2common&subdirectory=st2common',
+        'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common',
         '-I',
         '--prefix', `${MAGIC_FOLDER}/deps`
       ], {
@@ -120,7 +120,7 @@ class StackstormPlugin {
 
   async installCommonsDockerized() {
     this.serverless.cli.log('Spin Docker container to build python dependencies');
-    const st2common_pkg = 'git+https://github.com/stackstorm/st2.git@more_st2common_changes#egg=st2common&subdirectory=st2common';
+    const st2common_pkg = 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
     const image = 'lambci/lambda:build-python2.7';
 
     await pullDockerImage(image);
