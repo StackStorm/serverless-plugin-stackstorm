@@ -22,10 +22,33 @@ class StackstormPlugin {
     this.options = options;
 
     this.hooks = {
+      'stackstorm:package': () => this.serverless.pluginManager.spawn('package'),
+      'stackstorm:clean:clean': () => this.clean(),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
       'before:simulate:apigateway:initialize': () => this.beforeCreateDeploymentArtifacts(),
       'before:invoke:local:invoke': () => this.beforeCreateDeploymentArtifacts(true)
     };
+
+    this.commands = {
+      stackstorm: {
+        usage: 'Build λ with StackStorm',
+        lifecycleEvents: [
+          'package',
+        ],
+        commands: {
+          clean: {
+            usage: 'Clean stackstorm code',
+            lifecycleEvents: [
+              'clean',
+            ]
+          }
+        }
+      }
+    };
+  }
+
+  async clean() {
+    await fs.remove(MAGIC_FOLDER);
   }
 
   async beforeCreateDeploymentArtifacts(local) {
