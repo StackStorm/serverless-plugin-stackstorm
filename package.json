@@ -4,7 +4,11 @@
   "description": "Running StackStorm actions serverlessly",
   "main": "index.js",
   "scripts": {
+    "lint": "eslint .",
     "test": "mocha \"./{,!(node_modules)/**/}*.test.js\""
+  },
+  "engines": {
+    "node": "^8.4.0"
   },
   "author": "Kirill Enykeev <enykeev@stackstorm.com>",
   "license": "Apache-2.0",
