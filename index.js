@@ -3,8 +3,8 @@ const path = require('path');
 const git = require('nodegit');
 const yaml = require('js-yaml');
 const nopy = require('nopy');
+const request = require('axios');
 
-const { getIndex } = require('./lib/index');
 const { pullDockerImage, startDocker, execDocker, stopDocker } = require('./lib/docker');
 
 
@@ -45,10 +45,102 @@ class StackstormPlugin {
         }
       }
     };
+
+    this.dockerId = null;
+    this.dockerImage = 'lambci/lambda:build-python2.7';
+
+    this.index_url = 'https://index.stackstorm.org/v1/index.json';
+  }
+
+  async getIndex() {
+    if (!this._index) {
+      this._index = await request.get(this.index_url).then(res => res.data);
+    }
+
+    return this._index;
   }
 
   async clean() {
     await fs.remove(MAGIC_FOLDER);
+  }
+
+  async copyDeps() {
+    const st2common_pkg = 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
+
+    this.serverless.cli.log('Installing StackStorm adapter dependencies');
+    const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
+    await this.execDocker(['pip', 'install', '-I', st2common_pkg, '--prefix', prefix]);
+  }
+
+  async copyPackDeps(pack) {
+    const prefix = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${pack}`;
+    const pythonpath = `${prefix}/lib/python2.7/site-packages`;
+    const requirements = `${INTERNAL_MAGIC_FOLDER}/packs/${pack}/requirements.txt`;
+    await this.execDocker(['mkdir', '-p', pythonpath]);
+    await this.execDocker([
+      '/bin/bash', '-c',
+      `PYTHONPATH=$PYTHONPATH:${pythonpath} ` +
+      `pip --isolated install -r ${requirements} --prefix ${prefix} --src ${prefix}/src`
+    ]);
+  }
+
+  async copyAllPacksDeps() {
+    this.serverless.cli.log('Creating virtual environments for packs');
+    const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
+
+    for (let pack in packs) {
+      await this.copyPackDeps(packs[pack]);
+    }
+  }
+
+  async getAction(packName, actionName) {
+    const index = await this.getIndex();
+    const packMeta = index.packs[packName];
+
+    const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
+    try {
+      await git.Clone(packMeta.repo_url, localPath);
+    } catch (e) {
+      const repo = await git.Repository.open(localPath);
+      await repo.fetchAll();
+      await repo.mergeBranches('master', 'origin/master');
+    }
+
+    const actionContent = fs.readFileSync(`${localPath}/actions/${actionName}.yaml`);
+
+    return yaml.safeLoad(actionContent);
+  }
+
+  async pullDockerImage() {
+    return await pullDockerImage(this.dockerImage);
+  }
+
+  async startDocker() {
+    if (!this.dockerId) {
+      this.serverless.cli.log('Spin Docker container to build python dependencies');
+      const volume = `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`;
+      this.dockerId = await startDocker(this.dockerImage, volume);
+      return this.dockerId;
+    }
+
+    throw new this.serverless.classes.Error('Docker container for this session is already set. Stop it before creating a new one.');
+  }
+
+  async stopDocker() {
+    if (this.dockerId) {
+      this.serverless.cli.log('Stop Docker container');
+      return await stopDocker(this.dockerId);
+    }
+
+    throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
+  }
+
+  async execDocker(command) {
+    if (this.dockerId) {
+      return await execDocker(this.dockerId, command);
+    }
+
+    throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
   }
 
   async beforeCreateDeploymentArtifacts(local) {
@@ -98,24 +190,6 @@ class StackstormPlugin {
     }
   }
 
-  async getAction(packName, actionName) {
-    const index = await getIndex();
-    const packMeta = index.packs[packName];
-
-    const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
-    try {
-      await git.Clone(packMeta.repo_url, localPath);
-    } catch (e) {
-      const repo = await git.Repository.open(localPath);
-      await repo.fetchAll();
-      await repo.mergeBranches('master', 'origin/master');
-    }
-
-    const actionContent = fs.readFileSync(`${localPath}/actions/${actionName}.yaml`);
-
-    return yaml.safeLoad(actionContent);
-  }
-
   async installCommonsLocally() {
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
     if (!depsExists) {
@@ -142,40 +216,18 @@ class StackstormPlugin {
   }
 
   async installCommonsDockerized() {
-    this.serverless.cli.log('Spin Docker container to build python dependencies');
-    const st2common_pkg = 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
-    const image = 'lambci/lambda:build-python2.7';
+    await this.pullDockerImage();
 
-    await pullDockerImage(image);
-
-    const dockerId = await startDocker(image, `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`);
+    await this.startDocker();
 
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
     if (!depsExists) {
-      this.serverless.cli.log('Installing StackStorm adapter dependencies');
-      const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
-      await execDocker(dockerId, ['pip', 'install', '-I', st2common_pkg, '--prefix', prefix]);
+      await this.copyDeps();
     }
 
-    this.serverless.cli.log('Creating virtual environments for packs');
-    const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
+    await this.copyAllPacksDeps();
 
-    for (let pack in packs) {
-      const prefix = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packs[pack]}`;
-      const pythonpath = `${prefix}/lib/python2.7/site-packages`;
-      const requirements = `${INTERNAL_MAGIC_FOLDER}/packs/${packs[pack]}/requirements.txt`;
-      await execDocker(dockerId, ['mkdir', '-p', pythonpath]);
-      await execDocker(dockerId, [
-        '/bin/bash', '-c',
-        `PYTHONPATH=$PYTHONPATH:${pythonpath} ` +
-        `pip --isolated install -r ${requirements} --prefix ${prefix} --src ${prefix}/src`
-      ]);
-    }
-
-    this.serverless.cli.log('Stop Docker container');
-    await stopDocker(dockerId);
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await this.stopDocker();
   }
 }
 
