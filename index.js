@@ -24,6 +24,25 @@ class StackstormPlugin {
     this.hooks = {
       'stackstorm:package': () => this.serverless.pluginManager.spawn('package'),
       'stackstorm:clean:clean': () => this.clean(),
+      'stackstorm:docker:pull:pull': () => this.pullDockerImage(),
+      'stackstorm:docker:start:start': () => this.startDocker(),
+      'stackstorm:docker:stop:stop': () => this.stopDocker(this.options.dockerId),
+      'stackstorm:docker:exec:exec': () => this.execDocker(this.options.cmd.split(' ')),
+      'stackstorm:install:deps:copyDeps': () => this.copyDeps(),
+      'stackstorm:install:packs:clonePacks': () => {
+        if (this.options.pack) {
+          return this.clonePack(this.options.pack);
+        }
+
+        return this.clonePacks();
+      },
+      'stackstorm:install:packDeps:copyPackDeps': () => {
+        if (this.options.pack) {
+          return this.copyPackDeps(this.options.pack);
+        }
+
+        return this.copyAllPacksDeps();
+      },
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
       'before:simulate:apigateway:initialize': () => this.beforeCreateDeploymentArtifacts(),
       'before:invoke:local:invoke': () => this.beforeCreateDeploymentArtifacts(true)
@@ -37,10 +56,99 @@ class StackstormPlugin {
         ],
         commands: {
           clean: {
-            usage: 'Clean stackstorm code',
+            usage: 'Clean StackStorm code',
             lifecycleEvents: [
               'clean',
             ]
+          },
+          'docker': {
+            commands: {
+              pull: {
+                usage: 'Pull λ docker image',
+                lifecycleEvents: [
+                  'pull'
+                ]
+              },
+              start: {
+                usage: 'Start λ docker container',
+                lifecycleEvents: [
+                  'start'
+                ]
+              },
+              stop: {
+                usage: 'Stop λ docker container',
+                lifecycleEvents: [
+                  'stop'
+                ],
+                options: {
+                  dockerId: {
+                    usage: 'λ docker container ID',
+                    required: true
+                  }
+                }
+              },
+              exec: {
+                usage: 'Execute a command in λ docker container',
+                lifecycleEvents: [
+                  'exec'
+                ],
+                options: {
+                  dockerId: {
+                    usage: 'λ docker container ID',
+                    required: true
+                  },
+                  cmd: {
+                    usage: 'command to execute',
+                    shortcut: 'c',
+                    required: true
+                  }
+                }
+              }
+            }
+          },
+          'install': {
+            commands: {
+              deps: {
+                usage: 'Install StackStorm dependencies',
+                lifecycleEvents: [
+                  'copyDeps'
+                ],
+                options: {
+                  dockerId: {
+                    usage: 'λ docker container ID',
+                    required: true
+                  }
+                }
+              },
+              packs: {
+                usage: 'Install a pack',
+                lifecycleEvents: [
+                  'clonePacks'
+                ],
+                options: {
+                  pack: {
+                    usage: 'Install specific StackStorm pack',
+                    shortcut: 'p'
+                  }
+                }
+              },
+              packDeps: {
+                usage: 'Install dependencies for packs',
+                lifecycleEvents: [
+                  'copyPackDeps'
+                ],
+                options: {
+                  dockerId: {
+                    usage: 'λ docker container ID',
+                    required: true
+                  },
+                  pack: {
+                    usage: 'Install dependencies for specific pack.',
+                    shortcut: 'p'
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -96,18 +204,41 @@ class StackstormPlugin {
     }
   }
 
-  async getAction(packName, actionName) {
+  async clonePack(packName) {
     const index = await this.getIndex();
     const packMeta = index.packs[packName];
 
     const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
     try {
+      this.serverless.cli.log(`Cloning pack "${packMeta.ref || packMeta.name}"`);
       await git.Clone(packMeta.repo_url, localPath);
     } catch (e) {
       const repo = await git.Repository.open(localPath);
       await repo.fetchAll();
       await repo.mergeBranches('master', 'origin/master');
     }
+
+    return localPath;
+  }
+
+  async clonePacks() {
+    for (let key of Object.keys(this.serverless.service.functions)) {
+      const func = this.serverless.service.functions[key];
+
+      if (func.st2_function) {
+        if (func.handler) {
+          throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
+        }
+
+        const [ packName ] = func.st2_function.split('.');
+
+        await this.clonePack(packName);
+      }
+    }
+  }
+
+  async getAction(packName, actionName) {
+    const localPath = await this.clonePack(packName);
 
     const actionContent = fs.readFileSync(`${localPath}/actions/${actionName}.yaml`);
 
@@ -129,18 +260,19 @@ class StackstormPlugin {
     throw new this.serverless.classes.Error('Docker container for this session is already set. Stop it before creating a new one.');
   }
 
-  async stopDocker() {
-    if (this.dockerId) {
+  async stopDocker(dockerId = this.dockerId) {
+    if (dockerId) {
       this.serverless.cli.log('Stop Docker container');
-      return await stopDocker(this.dockerId);
+      return await stopDocker(dockerId);
     }
 
     throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
   }
 
-  async execDocker(command) {
-    if (this.dockerId) {
-      return await execDocker(this.dockerId, command);
+  async execDocker(cmd) {
+    const dockerId = this.dockerId || this.options.dockerId;
+    if (dockerId) {
+      return await execDocker(dockerId, cmd);
     }
 
     throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');

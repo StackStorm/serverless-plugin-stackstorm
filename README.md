@@ -61,6 +61,20 @@ or invoke it locally
 echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke local --function get_issue
 ```
 
+## Commands
+
+  The plugin also provides a few optional commands. You don't have to use them as they are all included into `sls package`, but they still might be handy in some situations.
+
+ - `sls stackstorm` - Build λ with StackStorm
+ - `sls stackstorm clean` - Clean StackStorm code
+ - `sls stackstorm docker pull` - Pull λ docker image
+ - `sls stackstorm docker start` - Start λ docker container
+ - `sls stackstorm docker stop` - Stop λ docker container
+ - `sls stackstorm docker exec` - Execute a command in λ docker container
+ - `sls stackstorm install deps` - Install StackStorm dependencies
+ - `sls stackstorm install packs` - Install a pack
+ - `sls stackstorm install packDeps` - Install dependencies for packs
+
 ## Exchange
 
 The available packs can be discovered in StackStorm Exchange (https://exchange.stackstorm.com/). At the moment, the collection consist of 6500+ actions spread across 130 packs. We've yet to try them all, though, but the one we did are marked with [`serverless`](https://exchange.stackstorm.org/#serverless) tag.
