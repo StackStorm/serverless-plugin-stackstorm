@@ -46,10 +46,13 @@ class StackstormPlugin {
       }
     };
 
-    this.dockerId = null;
-    this.dockerImage = 'lambci/lambda:build-python2.7';
+    const { custom = {} } = this.serverless.service;
+    const { stackstorm = {} } = custom;
 
-    this.index_url = 'https://index.stackstorm.org/v1/index.json';
+    this.dockerId = null;
+    this.dockerImage = stackstorm && stackstorm.image || 'lambci/lambda:build-python2.7';
+
+    this.index_url = stackstorm && stackstorm.index || 'https://index.stackstorm.org/v1/index.json';
   }
 
   async getIndex() {

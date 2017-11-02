@@ -42,6 +42,11 @@ functions:
                   "issue_id": "$input.params('issue_id')"
                 }
 
+custom:
+  stackstorm:
+    image: 'lambci/lambda:build-python2.7'
+    index: 'https://index.stackstorm.org/v1/index.json'
+
 plugins:
   - serverless-plugin-stackstorm
 ```
