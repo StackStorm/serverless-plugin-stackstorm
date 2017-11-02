@@ -58,7 +58,7 @@ echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke lo
 
 ## Exchange
 
-The available packs can be discovered in StackStorm Exchange (https://exchange.stackstorm.com/). At the moment, the collection consist of 4000+ actions spread across 130 packs.
+The available packs can be discovered in StackStorm Exchange (https://exchange.stackstorm.com/). At the moment, the collection consist of 6500+ actions spread across 130 packs. We've yet to try them all, though, but the one we did are marked with [`serverless`](https://exchange.stackstorm.org/#serverless) tag.
 
 ## Contributing to Exchange
 
