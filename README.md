@@ -56,6 +56,14 @@ or invoke it locally
 echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke local --function get_issue
 ```
 
+## Exchange
+
+The available packs can be discovered in StackStorm Exchange (https://exchange.stackstorm.com/). At the moment, the collection consist of 4000+ actions spread across 130 packs.
+
+## Contributing to Exchange
+
+The StackStorm packs this plugin allows you to run on serverless infrastructure are all part of [StackStorm Exchange](https://github.com/StackStorm-Exchange). We encourage community members to contribute to this packs to enrich the entire ecosystem. The most simple way to help us is to try different packs, mark the one that works with `serverless` keyword and report ones that don't work for some reason. For now, the plugin only supports st2's python runner, but they represent more than 90% of exchange actions.
+
 ## Authors
 
 * **Kirill Enykeev** - [enykeev](https://github.com/enykeev)
