@@ -1,0 +1,23 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/serverless-plugin-stackstorm
+    docker:
+      - image: circleci/node:8.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+      - run:
+          name: Install the package
+          command: npm install
+      - save_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - ./node_modules
+      - run:
+          name: Lint
+          command: npm run lint
+      - run:
+          name: Run tests
+          command: npm test
