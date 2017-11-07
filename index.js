@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
 const git = require('nodegit');
@@ -222,25 +223,27 @@ class StackstormPlugin {
   }
 
   async clonePacks() {
-    for (let key of Object.keys(this.serverless.service.functions)) {
-      const func = this.serverless.service.functions[key];
+    return Promise.all(_(this.getFunctions())
+      .map(func => func.split('.')[0])
+      .uniq()
+      .map(packName => this.clonePack(packName))
+    );
+  }
 
+  getFunctions() {
+    return _.map(this.serverless.service.functions, func => {
       if (func.st2_function) {
         if (func.handler) {
           throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
         }
 
-        const [ packName ] = func.st2_function.split('.');
-
-        await this.clonePack(packName);
+        return func.st2_function;
       }
-    }
+    }).filter(Boolean);
   }
 
   async getAction(packName, actionName) {
-    const localPath = await this.clonePack(packName);
-
-    const actionContent = fs.readFileSync(`${localPath}/actions/${actionName}.yaml`);
+    const actionContent = fs.readFileSync(`${MAGIC_FOLDER}/packs/${packName}/actions/${actionName}.yaml`);
 
     return yaml.safeLoad(actionContent);
   }
@@ -293,6 +296,7 @@ class StackstormPlugin {
         }
 
         const [ packName, actionName ] = func.st2_function.split('.');
+        await this.clonePack(packName);
         await this.getAction(packName, actionName);
 
         func.handler = `${MAGIC_FOLDER}/handler.stackstorm`;

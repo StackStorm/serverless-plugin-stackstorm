@@ -179,7 +179,7 @@ describe('index', () => {
 
       const instance = new StackStorm(sls, opts);
 
-      await expect(instance.copyPackDeps('dummypack')).to.eventually.rejectedWith(CustomError);
+      await expect(instance.copyPackDeps('dummypack')).to.eventually.be.rejectedWith(CustomError);
     });
   });
 
@@ -199,6 +199,183 @@ describe('index', () => {
       expect(instance.copyPackDeps).to.be.calledWith(1);
       expect(instance.copyPackDeps).to.be.calledWith(2);
       expect(instance.copyPackDeps).to.be.calledWith(3);
+    });
+  });
+
+  describe('#clonePack', () => {
+    it('should clone StackStorm pack if it doesn\'t exist yet', async () => {
+      const cloneStub = sinon.stub().resolves();
+      const StackStorm = mock('./index.js', {
+        'nodegit': {
+          Clone: cloneStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+      instance.getIndex = () => ({
+        packs: {
+          some: {
+            ref: 'some',
+            repo_url: 'http://thing/'
+          }
+        }
+      });
+
+      await expect(instance.clonePack('some')).to.eventually.be.fulfilled;
+      expect(cloneStub).to.be.calledOnce;
+      expect(cloneStub).to.be.calledWith('http://thing/', '~st2/packs/some');
+    });
+
+    it('should pull the latest master for StackStorm pack if it exists already', async () => {
+      const fetchStub = sinon.stub().resolves();
+      const mergeStub = sinon.stub().resolves();
+      const openStub = sinon.stub().resolves({
+        fetchAll: fetchStub,
+        mergeBranches: mergeStub
+      });
+      const StackStorm = mock('./index.js', {
+        'nodegit': {
+          Repository: {
+            open: openStub
+          }
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+      instance.getIndex = () => ({
+        packs: {
+          some: {
+            ref: 'some',
+            repo_url: 'http://thing/'
+          }
+        }
+      });
+
+      await expect(instance.clonePack('some')).to.eventually.be.fulfilled;
+      expect(openStub).to.be.calledOnce;
+      expect(openStub).to.be.calledWith('~st2/packs/some');
+      expect(fetchStub).to.be.calledOnce;
+      expect(fetchStub).to.be.calledWith();
+      expect(mergeStub).to.be.calledOnce;
+      expect(mergeStub).to.be.calledWith('master', 'origin/master');
+    });
+  });
+
+  describe('#clonePacks', () => {
+    it('should clone all stackstorm packs mentioned in the serverless.yml', async () => {
+      const serverless = {
+        service: {
+          functions: {
+            one: {
+              st2_function: 'some.one'
+            },
+            two: {
+              st2_function: 'some.two'
+            },
+            three: {
+              st2_function: 'someother.three'
+            },
+            four: {
+              handler: 'some'
+            }
+          }
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+      instance.clonePack = sinon.stub().resolves();
+
+      await expect(instance.clonePacks()).to.eventually.be.fulfilled;
+      expect(instance.clonePack).to.be.calledTwice;
+      expect(instance.clonePack).to.be.calledWith('some');
+      expect(instance.clonePack).to.be.calledWith('someother');
+    });
+  });
+
+  describe('#getAction', () => {
+    it('should return action\'s metadata', async () => {
+      const actionMetaYaml = 'some: thing';
+      const readStub = sinon.stub().returns(actionMetaYaml);
+      const StackStorm = mock('./index.js', {
+        'fs-extra': {
+          readFileSync: readStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+
+      await expect(instance.getAction('some', 'thing')).to.eventually.be.deep.equal({some: 'thing'});
+      expect(readStub).to.be.calledOnce;
+      expect(readStub).to.be.calledWith('~st2/packs/some/actions/thing.yaml');
+    });
+  });
+
+  describe('#pullDockerImage', () => {
+    it('should pull the image', async () => {
+      const pullStub = sinon.stub().resolves();
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          pullDockerImage: pullStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+
+      await expect(instance.pullDockerImage()).to.eventually.be.fulfilled;
+      expect(pullStub).to.be.calledOnce;
+      expect(pullStub).to.be.calledWith();
+    });
+  });
+
+  describe('#startDocker', () => {
+    it('should start the container', async () => {
+      const startStub = sinon.stub().resolves();
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          startDocker: startStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+
+      await expect(instance.startDocker()).to.eventually.be.fulfilled;
+      expect(startStub).to.be.calledOnce;
+      expect(startStub).to.be.calledWith();
+    });
+  });
+
+  describe('#stopDocker', () => {
+    it('should stop the container', async () => {
+      const stopStub = sinon.stub().resolves();
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          stopDocker: stopStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+
+      await expect(instance.stopDocker('someId')).to.eventually.be.fulfilled;
+      expect(stopStub).to.be.calledOnce;
+      expect(stopStub).to.be.calledWith('someId');
+    });
+  });
+
+  describe('#execDocker', () => {
+    it('should execute a command in the container', async () => {
+      const execStub = sinon.stub().resolves();
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          execDocker: execStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+      instance.dockerId = 'someId';
+
+      await expect(instance.execDocker('some command')).to.eventually.be.fulfilled;
+      expect(execStub).to.be.calledOnce;
+      expect(execStub).to.be.calledWith('someId', 'some command');
     });
   });
 });
