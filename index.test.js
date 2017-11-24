@@ -31,18 +31,25 @@ describe('index', () => {
     expect(instance).to.have.property('dockerId').that.is.not.ok;
   });
 
-  it('should have default initial value of dockerImage', () => {
+  it('should have default initial value of dockerRunImage', () => {
     const instance = new StackStorm(sls, opts);
 
-    expect(instance).to.have.property('dockerImage').that.equal('lambci/lambda:build-python2.7');
+    expect(instance).to.have.property('dockerBuildImage').that.equal('lambci/lambda:build-python2.7');
   });
 
-  it('should allow redefine dockerImage value with custom field', () => {
+  it('should have default initial value of dockerRunImage', () => {
+    const instance = new StackStorm(sls, opts);
+
+    expect(instance).to.have.property('dockerBuildImage').that.equal('lambci/lambda:build-python2.7');
+  });
+
+  it('should allow redefine dockerBuildImage and dockerRunImage value with custom fields', () => {
     const serverless = {
       service: {
         custom: {
           stackstorm: {
-            image: 'custom/image'
+            buildImage: 'custom/image',
+            runImage: 'custom/otherimage'
           }
         }
       }
@@ -50,7 +57,8 @@ describe('index', () => {
 
     const instance = new StackStorm(serverless, opts);
 
-    expect(instance).to.have.property('dockerImage').that.equal('custom/image');
+    expect(instance).to.have.property('dockerBuildImage').that.equal('custom/image');
+    expect(instance).to.have.property('dockerRunImage').that.equal('custom/otherimage');
   });
 
   it('should have default initial value of index_url', () => {
@@ -126,6 +134,7 @@ describe('index', () => {
       expect(execStub).to.be.calledWith(instance.dockerId, [
         'pip', 'install', '-I',
         'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common',
+        'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner',
         '--prefix', '/var/task/~st2/deps'
       ]);
     });

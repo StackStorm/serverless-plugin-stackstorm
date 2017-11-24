@@ -5,8 +5,9 @@ const git = require('nodegit');
 const yaml = require('js-yaml');
 const nopy = require('nopy');
 const request = require('axios');
+const stdin = require('get-stdin');
 
-const { pullDockerImage, startDocker, execDocker, stopDocker } = require('./lib/docker');
+const { pullDockerImage, startDocker, runDocker, execDocker, stopDocker } = require('./lib/docker');
 
 
 const MAGIC_FOLDER = '~st2';
@@ -29,6 +30,11 @@ class StackstormPlugin {
       'stackstorm:docker:start:start': () => this.startDocker(),
       'stackstorm:docker:stop:stop': () => this.stopDocker(this.options.dockerId),
       'stackstorm:docker:exec:exec': () => this.execDocker(this.options.cmd.split(' ')),
+      'stackstorm:docker:run:run': () => {
+        const { 'function': func, data, ...rest } = this.options;
+        return this.runDocker(func, data, rest);
+      },
+      'stackstorm:install:adapter:copyAdapter': () => this.copyAdapter(),
       'stackstorm:install:deps:copyDeps': () => this.copyDeps(),
       'stackstorm:install:packs:clonePacks': () => {
         if (this.options.pack) {
@@ -62,7 +68,7 @@ class StackstormPlugin {
               'clean',
             ]
           },
-          'docker': {
+          docker: {
             commands: {
               pull: {
                 usage: 'Pull λ docker image',
@@ -104,11 +110,39 @@ class StackstormPlugin {
                     required: true
                   }
                 }
+              },
+              run: {
+                usage: 'Execute a function in λ docker container',
+                lifecycleEvents: [
+                  'run'
+                ],
+                options: {
+                  function: {
+                    usage: 'Name of the function',
+                    shortcut: 'f',
+                    required: true
+                  },
+                  path: {
+                    usage: 'Path to JSON or YAML file holding input data',
+                    shortcut: 'p',
+                  },
+                  data: {
+                    usage: 'Input data',
+                    shortcut: 'd',
+                    required: true
+                  }
+                }
               }
             }
           },
-          'install': {
+          install: {
             commands: {
+              adapter: {
+                usage: 'Install StackStorm adapter',
+                lifecycleEvents: [
+                  'copyAdapter'
+                ]
+              },
               deps: {
                 usage: 'Install StackStorm dependencies',
                 lifecycleEvents: [
@@ -159,7 +193,10 @@ class StackstormPlugin {
     const { stackstorm = {} } = custom;
 
     this.dockerId = null;
-    this.dockerImage = stackstorm && stackstorm.image || 'lambci/lambda:build-python2.7';
+    this.dockerRunImage = stackstorm && stackstorm.runImage || 'lambci/lambda:python2.7';
+    this.dockerBuildImage = stackstorm && stackstorm.buildImage
+      || stackstorm.image
+      || 'lambci/lambda:build-python2.7';
 
     this.index_url = stackstorm && stackstorm.index || 'https://index.stackstorm.org/v1/index.json';
   }
@@ -176,9 +213,14 @@ class StackstormPlugin {
     await fs.remove(MAGIC_FOLDER);
   }
 
+  async copyAdapter() {
+    this.serverless.cli.log('Copying StackStorm adapter code');
+    await fs.copy(__dirname + '/stackstorm', MAGIC_FOLDER);
+  }
+
   async copyDeps() {
     const st2common_pkg = 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
-    const python_runner_pkg = 'git+https://github.com/StackStorm/st2#egg=python_runner&subdirectory=contrib/runners/python_runner';
+    const python_runner_pkg = 'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner';
 
     this.serverless.cli.log('Installing StackStorm adapter dependencies');
     const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
@@ -250,14 +292,14 @@ class StackstormPlugin {
   }
 
   async pullDockerImage() {
-    return await pullDockerImage(this.dockerImage);
+    return await pullDockerImage(this.dockerBuildImage);
   }
 
   async startDocker() {
     if (!this.dockerId) {
       this.serverless.cli.log('Spin Docker container to build python dependencies');
       const volume = `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`;
-      this.dockerId = await startDocker(this.dockerImage, volume);
+      this.dockerId = await startDocker(this.dockerBuildImage, volume);
       return this.dockerId;
     }
 
@@ -280,6 +322,39 @@ class StackstormPlugin {
     }
 
     throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
+  }
+
+  async runDocker(funcName, data, opts) {
+    if (!opts.data) {
+      if (opts.path) {
+        const absolutePath = path.isAbsolute(opts.path) ?
+          opts.path :
+          path.join(this.serverless.config.servicePath, opts.path);
+
+        if (!this.serverless.utils.fileExistsSync(absolutePath)) {
+          throw new this.serverless.classes.Error('The file you provided does not exist.');
+        }
+
+        opts.data = this.serverless.utils.readFileSync(absolutePath);
+      } else {
+        try {
+          opts.data = await stdin();
+        } catch (exception) {
+          // resolve if no stdin was provided
+        }
+      }
+    }
+
+    await this.beforeCreateDeploymentArtifacts();
+
+    const func = this.serverless.service.functions[funcName];
+
+    const volumes = [`${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`];
+    const envs = _.map(func.environment, (value, key) => `${key}=${value}`);
+    const cmd = [`${MAGIC_FOLDER}/handler.stackstorm`, data];
+
+    this.serverless.cli.log('Spin Docker container to run a function');
+    return await runDocker(this.dockerRunImage, volumes, envs, cmd);
   }
 
   async beforeCreateDeploymentArtifacts(local) {
@@ -319,8 +394,7 @@ class StackstormPlugin {
     }
 
     if (needCommons) {
-      this.serverless.cli.log('Copying StackStorm adapter code');
-      await fs.copy(__dirname + '/stackstorm', MAGIC_FOLDER);
+      await this.copyAdapter();
 
       if (local) {
         await this.installCommonsLocally();
