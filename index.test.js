@@ -126,6 +126,7 @@ describe('index', () => {
       expect(execStub).to.be.calledWith(instance.dockerId, [
         'pip', 'install', '-I',
         'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common',
+        'git+https://github.com/StackStorm/st2#egg=python_runner&subdirectory=contrib/runners/python_runner',
         '--prefix', '/var/task/~st2/deps'
       ]);
     });
