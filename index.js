@@ -381,6 +381,12 @@ class StackstormPlugin {
         if (func.st2_config) {
           func.environment.ST2_CONFIG = JSON.stringify(func.st2_config);
         }
+        if (func.st2_parameters) {
+          func.environment.ST2_PARAMETERS = JSON.stringify(func.st2_parameters);
+        }
+        if (func.st2_output) {
+          func.environment.ST2_OUTPUT = JSON.stringify(func.st2_output);
+        }
         func.environment.PYTHONPATH = DEFAULT_PYTHON_PATH
           .concat([
             `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${packName}/lib/python2.7/site-packages`,

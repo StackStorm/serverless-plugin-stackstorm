@@ -83,7 +83,11 @@ CONFIG_SCHEMAS = _load_config_schemas()
 
 
 def stackstorm(event, context):
-    action_db = ACTIONS[os.environ['ST2_ACTION']]
+    action_name = os.environ['ST2_ACTION']
+    try:
+        action_db = ACTIONS[action_name]
+    except KeyError:
+        raise ValueError('No action named "%s" has been installed.' % (action_name))
 
     manager = DriverManager(namespace='st2common.runners.runner', invoke_on_load=False,
                             name=action_db.runner_type['name'])
@@ -117,19 +121,50 @@ def stackstorm(event, context):
                                                         config_path=None,
                                                         pack_name=action_db.pack)
 
-    # Finalized parameters are resolved and then rendered. This process could
-    # fail. Handle the exception and report the error correctly.
+    param_values = os.environ.get('ST2_PARAMETERS', None)
     try:
+        if param_values:
+            live_params = param_utils.render_live_params(
+                runner_parameters=runnertype_db.runner_parameters,
+                action_parameters=action_db.parameters,
+                params=json.loads(param_values),
+                action_context={},
+                additional_contexts={
+                    'input': event
+                })
+        else:
+            live_params = event
+
         runner_params, action_params = param_utils.render_final_params(
-            runnertype_db.runner_parameters, action_db.parameters, {}, {})
-        runner.runner_parameters = runner_params
+            runner_parameters=runnertype_db.runner_parameters,
+            action_parameters=action_db.parameters,
+            params=live_params,
+            action_context={})
     except ParamException as e:
         raise actionrunner.ActionRunnerException(str(e))
 
-    LOG.debug('Performing pre-run for runner: %s', runner.runner_id)
+    runner.runner_parameters = runner_params
 
+    LOG.debug('Performing pre-run for runner: %s', runner.runner_id)
     runner.pre_run()
 
-    (status, result, context) = runner.run(event)
+    (status, output, context) = runner.run(action_params)
+
+    output_values = os.environ.get('ST2_OUTPUT', None)
+    if param_values:
+        try:
+            result = param_utils.render_live_params(
+                runner_parameters=runnertype_db.runner_parameters,
+                action_parameters=action_db.parameters,
+                params=json.loads(output_values),
+                action_context={},
+                additional_contexts={
+                    'input': event,
+                    'output': output
+                })
+        except ParamException as e:
+            raise actionrunner.ActionRunnerException(str(e))
+    else:
+        result = output
 
     return result
