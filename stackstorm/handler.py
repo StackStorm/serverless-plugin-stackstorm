@@ -5,6 +5,7 @@ import yaml
 import logging
 import six
 from oslo_config import cfg
+from stevedore.driver import DriverManager
 
 from st2common.bootstrap.actionsregistrar import ActionsRegistrar
 from st2common.constants.pack import CONFIG_SCHEMA_FILE_NAME
@@ -30,31 +31,6 @@ LOG = logging.getLogger(__name__)
 del sys.argv[1:]
 
 cfg.CONF(args=('--config-file', '~st2/st2.conf'), version=VERSION_STRING)
-
-
-def _load_runnertypes():
-    runners = {}
-    runner_types = RunnersLoader().get_runners(content_utils.get_runners_base_paths())
-
-    for runner_name in runner_types:
-        runner_type = MetaLoader().load(os.path.join(runner_types[runner_name], MANIFEST_FILE_NAME))[0]
-
-        aliases = runner_type.get('aliases', [])
-
-        # Remove additional, non db-model attributes
-        non_db_attributes = ['experimental', 'aliases']
-        for attribute in non_db_attributes:
-            if attribute in runner_type:
-                del runner_type[attribute]
-
-        runnertype_api = RunnerTypeAPI(**runner_type)
-        runnertype_api.validate()
-        runners[runnertype_api.name] = RunnerTypeAPI.to_model(runnertype_api)
-
-        for alias in aliases:
-            runners[alias] = runners[runnertype_api.name]
-
-    return runners
 
 
 def _load_actions():
@@ -102,12 +78,17 @@ def _load_config_schemas():
     return config_schemas
 
 
-RUNNERS = _load_runnertypes()
 ACTIONS = _load_actions()
 CONFIG_SCHEMAS = _load_config_schemas()
 
-def _get_runner(runnertype_db, action_db):
-    runner = get_runner(runnertype_db.runner_module)
+
+def stackstorm(event, context):
+    action_db = ACTIONS[os.environ['ST2_ACTION']]
+
+    manager = DriverManager(namespace='st2common.runners.runner', invoke_on_load=False,
+                            name=action_db.runner_type['name'])
+    runnertype_db = RunnerTypeAPI.to_model(RunnerTypeAPI(**manager.driver.get_metadata()[0]))
+    runner = manager.driver.get_runner()
 
     runner._sandbox = False
     runner.runner_type_db = runnertype_db
@@ -127,15 +108,6 @@ def _get_runner(runnertype_db, action_db):
     # For re-run, get the ActionExecutionDB in which the re-run is based on.
     rerun_ref_id = runner.context.get('re-run', {}).get('ref')
     runner.rerun_ex_ref = ActionExecution.get(id=rerun_ref_id) if rerun_ref_id else None
-
-    return runner
-
-
-def stackstorm(event, context):
-    action_db = ACTIONS[os.environ['ST2_ACTION']]
-    runnertype_db = RUNNERS[action_db.runner_type['name']]
-
-    runner = _get_runner(runnertype_db, action_db)
 
     config_schema = CONFIG_SCHEMAS.get(action_db.pack, None)
     config_values = os.environ.get('ST2_CONFIG', None)

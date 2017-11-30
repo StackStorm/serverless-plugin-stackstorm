@@ -178,10 +178,11 @@ class StackstormPlugin {
 
   async copyDeps() {
     const st2common_pkg = 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
+    const python_runner_pkg = 'git+https://github.com/StackStorm/st2#egg=python_runner&subdirectory=contrib/runners/python_runner';
 
     this.serverless.cli.log('Installing StackStorm adapter dependencies');
     const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
-    await this.execDocker(['pip', 'install', '-I', st2common_pkg, '--prefix', prefix]);
+    await this.execDocker(['pip', 'install', '-I', st2common_pkg, python_runner_pkg, '--prefix', prefix]);
   }
 
   async copyPackDeps(pack) {
