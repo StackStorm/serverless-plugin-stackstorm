@@ -2,12 +2,14 @@ import os
 import sys
 import json
 import yaml
+import uuid
 import logging
 import six
 from oslo_config import cfg
 from stevedore.driver import DriverManager
 
 from st2common.bootstrap.actionsregistrar import ActionsRegistrar
+from st2common.constants.action import LIVEACTION_STATUS_SUCCEEDED
 from st2common.constants.pack import CONFIG_SCHEMA_FILE_NAME
 from st2common.constants.runners import MANIFEST_FILE_NAME
 from st2common.constants.system import VERSION_STRING
@@ -19,6 +21,7 @@ from st2common.models.api.action import ActionAPI, RunnerTypeAPI
 from st2common.models.api.pack import ConfigSchemaAPI
 from st2common.models.db.action import ActionDB
 from st2common.models.db.runner import RunnerTypeDB
+from st2common.runners.base import ActionRunner
 from st2common.runners.base import get_runner
 from st2common.util.pack import validate_config_against_schema
 from st2common.util import param as param_utils
@@ -31,6 +34,14 @@ LOG = logging.getLogger(__name__)
 del sys.argv[1:]
 
 cfg.CONF(args=('--config-file', '~st2/st2.conf'), version=VERSION_STRING)
+
+
+class PassthroughRunner(ActionRunner):
+    def __init__(self):
+        super(PassthroughRunner, self).__init__(runner_id=str(uuid.uuid4()))
+
+    def run(self, action_parameters):
+        return (LIVEACTION_STATUS_SUCCEEDED, action_parameters, None)
 
 
 def _load_actions():
@@ -82,7 +93,7 @@ ACTIONS = _load_actions()
 CONFIG_SCHEMAS = _load_config_schemas()
 
 
-def stackstorm(event, context):
+def base(event, context, passthrough=False):
     action_name = os.environ['ST2_ACTION']
     try:
         action_db = ACTIONS[action_name]
@@ -92,7 +103,11 @@ def stackstorm(event, context):
     manager = DriverManager(namespace='st2common.runners.runner', invoke_on_load=False,
                             name=action_db.runner_type['name'])
     runnertype_db = RunnerTypeAPI.to_model(RunnerTypeAPI(**manager.driver.get_metadata()[0]))
-    runner = manager.driver.get_runner()
+
+    if passthrough:
+        runner = PassthroughRunner()
+    else:
+        runner = manager.driver.get_runner()
 
     runner._sandbox = False
     runner.runner_type_db = runnertype_db
@@ -167,4 +182,22 @@ def stackstorm(event, context):
     else:
         result = output
 
-    return result
+    return {
+        'event': event,
+        'live_params': live_params,
+        'output': output,
+        'result': result
+    }
+
+# for backwards compatibility
+def stackstorm(*args, **kwargs):
+    res = base(*args, **kwargs)
+    return res['result']
+
+def basic(*args, **kwargs):
+    res = base(*args, **kwargs)
+    return res
+
+def passthrough(*args, **kwargs):
+    res = base(*args, passthrough=True, **kwargs)
+    return res

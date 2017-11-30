@@ -133,6 +133,13 @@ class StackstormPlugin {
                     usage: 'Input data',
                     shortcut: 'd',
                     required: true
+                  },
+                  passthrough: {
+                    usage: 'Return incoming event as a result instead of running StackStorm action'
+                  },
+                  verbose: {
+                    usage: 'Print all the transformation steps',
+                    shortcut: 'v'
                   }
                 }
               }
@@ -367,10 +374,37 @@ class StackstormPlugin {
 
     const volumes = [`${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`];
     const envs = _.map(func.environment, (value, key) => `${key}=${value}`);
-    const cmd = [`${MAGIC_FOLDER}/handler.stackstorm`, data];
+
+    const cmd = [`${MAGIC_FOLDER}/handler.${opts.passthrough ? 'passthrough' : 'basic'}`, data];
 
     this.serverless.cli.log('Spin Docker container to run a function');
-    return await runDocker(this.dockerRunImage, volumes, envs, cmd);
+    const { result } = await runDocker(this.dockerRunImage, volumes, envs, cmd)
+      .catch(e => {
+        if (e.result && e.result.errorMessage) {
+          throw new Error(`Function error: ${e.result.errorMessage}`);
+        }
+        throw e;
+      });
+
+    const msg = [];
+
+    if (opts.verbose) {
+      msg.push(`${chalk.yellow.underline('Incoming event ->')}`);
+      msg.push(`${JSON.stringify(result.event, null, 2)}`);
+      msg.push(`${chalk.yellow.underline('-> Parameter transformer ->')}`);
+      msg.push(`${JSON.stringify(result.live_params, null, 2)}`);
+      msg.push(`${chalk.yellow.underline(
+        `-> Action call ${opts.passthrough ? '(passthrough) ' : ''}->`
+      )}`);
+      msg.push(`${JSON.stringify(result.output, null, 2)}`);
+      msg.push(`${chalk.yellow.underline('-> Output transformer ->')}`);
+    }
+
+    msg.push(`${JSON.stringify(result.result, null, 2)}`);
+
+    this.serverless.cli.consoleLog(msg.join('\n'));
+
+    return result.result;
   }
 
   async showActionInfo(action) {
