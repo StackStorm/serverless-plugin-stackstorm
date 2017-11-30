@@ -14,12 +14,14 @@
   "license": "Apache-2.0",
   "dependencies": {
     "axios": "0.16.2",
+    "chalk": "2.3.0",
     "fs-extra": "4.0.2",
     "get-stdin": "5.0.1",
     "js-yaml": "3.10.0",
     "lodash": "4.17.4",
     "nodegit": "0.20.2",
-    "nopy": "0.2.3"
+    "nopy": "0.2.3",
+    "url-join": "2.0.2"
   },
   "devDependencies": {
     "chai": "4.1.2",
