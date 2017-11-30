@@ -44,8 +44,9 @@ functions:
 
 custom:
   stackstorm:
-    image: 'lambci/lambda:build-python2.7'
-    index: 'https://index.stackstorm.org/v1/index.json'
+    runImage: 'lambci/lambda:python2.7'
+    buildImage: 'lambci/lambda:build-python2.7'
+    indexRoot: 'https://index.stackstorm.org/v1/'
 
 plugins:
   - serverless-plugin-stackstorm
@@ -71,9 +72,12 @@ echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke lo
  - `sls stackstorm docker start` - Start λ docker container
  - `sls stackstorm docker stop` - Stop λ docker container
  - `sls stackstorm docker exec` - Execute a command in λ docker container
+ - `sls stackstorm docker run` - Execute a function in λ docker container
+ - `sls stackstorm install adapter` - Install StackStorm adapter
  - `sls stackstorm install deps` - Install StackStorm dependencies
  - `sls stackstorm install packs` - Install a pack
  - `sls stackstorm install packDeps` - Install dependencies for packs
+ - `sls stackstorm info` - Print information on the action
 
 ## Exchange
 

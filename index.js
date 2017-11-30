@@ -6,6 +6,8 @@ const yaml = require('js-yaml');
 const nopy = require('nopy');
 const request = require('axios');
 const stdin = require('get-stdin');
+const urljoin = require('url-join');
+const chalk = require('chalk');
 
 const { pullDockerImage, startDocker, runDocker, execDocker, stopDocker } = require('./lib/docker');
 
@@ -50,6 +52,7 @@ class StackstormPlugin {
 
         return this.copyAllPacksDeps();
       },
+      'stackstorm:info:info': () => this.showActionInfo(this.options.action),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
       'before:simulate:apigateway:initialize': () => this.beforeCreateDeploymentArtifacts(),
       'before:invoke:local:invoke': () => this.beforeCreateDeploymentArtifacts(true)
@@ -184,6 +187,18 @@ class StackstormPlugin {
                 }
               }
             }
+          },
+          info: {
+            usage: 'Print information on the action',
+            lifecycleEvents: [
+              'info',
+            ],
+            options: {
+              action: {
+                usage: 'Action name',
+                required: true
+              }
+            }
           }
         }
       }
@@ -198,7 +213,8 @@ class StackstormPlugin {
       || stackstorm.image
       || 'lambci/lambda:build-python2.7';
 
-    this.index_url = stackstorm && stackstorm.index || 'https://index.stackstorm.org/v1/index.json';
+    this.index_root = stackstorm && stackstorm.indexRoot || 'https://index.stackstorm.org/v1/';
+    this.index_url = stackstorm && stackstorm.index || urljoin(this.index_root, 'index.json');
   }
 
   async getIndex() {
@@ -355,6 +371,30 @@ class StackstormPlugin {
 
     this.serverless.cli.log('Spin Docker container to run a function');
     return await runDocker(this.dockerRunImage, volumes, envs, cmd);
+  }
+
+  async showActionInfo(action) {
+    const [ packName, actionName ] = action.split('.');
+    const metaUrl = urljoin(this.index_root, 'packs', packName, 'actions', `${actionName}.json`);
+    const packMeta = await request.get(metaUrl).then(res => res.data);
+
+    const dots = 30;
+    const usage = packMeta.description;
+    const indent = '  ';
+
+    const msg = [];
+    msg.push(`${chalk.yellow.underline('Action')}`);
+    msg.push(`${chalk.yellow(action)} ${chalk.dim(_.repeat('.', dots - action.length))} ${usage}`);
+
+    for (let name in packMeta.parameters) {
+      const param = packMeta.parameters[name];
+      const title = `${name} [${param.type}] ${param.required ? '(required)' : ''}`;
+      const dotsLength = dots - indent.length - title.length;
+      const usage = param.description;
+      msg.push(`${indent}${chalk.yellow(title)} ${chalk.dim(_.repeat('.', dotsLength))} ${usage}`);
+    }
+
+    this.serverless.cli.consoleLog(msg.join('\n'));
   }
 
   async beforeCreateDeploymentArtifacts(local) {
