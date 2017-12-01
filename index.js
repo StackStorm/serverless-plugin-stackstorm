@@ -414,7 +414,7 @@ class StackstormPlugin {
     const packMeta = await request.get(metaUrl).then(res => res.data);
 
     const dots = 30;
-    const usage = packMeta.description;
+    const usage = packMeta.description || chalk.dim('action description is missing');
     const indent = '  ';
 
     const msg = [];
@@ -425,7 +425,7 @@ class StackstormPlugin {
       const param = packMeta.parameters[name];
       const title = `${name} [${param.type}] ${param.required ? '(required)' : ''}`;
       const dotsLength = dots - indent.length - title.length;
-      const usage = param.description;
+      const usage = param.description || chalk.dim('description is missing');
       msg.push(`${indent}${chalk.yellow(title)} ${chalk.dim(_.repeat('.', dotsLength))} ${usage}`);
     }
 
