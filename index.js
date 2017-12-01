@@ -408,7 +408,8 @@ class StackstormPlugin {
   }
 
   async showActionInfo(action) {
-    const [ packName, actionName ] = action.split('.');
+    const [ packName, ...actionNameRest ] = action.split('.');
+    const actionName = actionNameRest.join('.');
     const metaUrl = urljoin(this.index_root, 'packs', packName, 'actions', `${actionName}.json`);
     const packMeta = await request.get(metaUrl).then(res => res.data);
 
@@ -445,7 +446,8 @@ class StackstormPlugin {
           throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
         }
 
-        const [ packName, actionName ] = func.st2_function.split('.');
+        const [ packName, ...actionNameRest ] = func.st2_function.split('.');
+        const actionName = actionNameRest.join('.');
         await this.clonePack(packName);
         await this.getAction(packName, actionName);
 
