@@ -16,7 +16,8 @@ class CustomError extends Error {}
 describe('index', () => {
   const sls = {
     cli: {
-      log: sinon.stub()
+      log: sinon.stub(),
+      consoleLog: sinon.stub()
     },
     classes: {
       Error: CustomError
@@ -338,7 +339,7 @@ describe('index', () => {
 
   describe('#startDocker', () => {
     it('should start the container', async () => {
-      const startStub = sinon.stub().resolves();
+      const startStub = sinon.stub().resolves(Promise.resolve('deadbeef'));
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           startDocker: startStub
@@ -347,9 +348,23 @@ describe('index', () => {
 
       const instance = new StackStorm(sls, opts);
 
-      await expect(instance.startDocker()).to.eventually.be.fulfilled;
+      await expect(instance.startDocker()).to.eventually.be.equal('deadbeef');
       expect(startStub).to.be.calledOnce;
       expect(startStub).to.be.calledWith();
+    });
+
+    it('should fail if docker container is already spinning', async () => {
+      const startStub = sinon.stub().resolves(Promise.resolve('deadbeef'));
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          startDocker: startStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+      await instance.startDocker();
+
+      await expect(instance.startDocker()).to.eventually.be.rejected;
     });
   });
 
@@ -368,6 +383,19 @@ describe('index', () => {
       expect(stopStub).to.be.calledOnce;
       expect(stopStub).to.be.calledWith('someId');
     });
+
+    it('should fail if no docker container is set', async () => {
+      const startStub = sinon.stub().resolves(Promise.resolve('deadbeef'));
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          startDocker: startStub
+        }
+      });
+
+      const instance = new StackStorm(sls, opts);
+
+      await expect(instance.stopDocker()).to.eventually.be.rejected;
+    });
   });
 
   describe('#execDocker', () => {
@@ -385,6 +413,260 @@ describe('index', () => {
       await expect(instance.execDocker('some command')).to.eventually.be.fulfilled;
       expect(execStub).to.be.calledOnce;
       expect(execStub).to.be.calledWith('someId', 'some command');
+    });
+  });
+
+  describe('#runDocker', () => {
+    it('should execute a function in the container', async () => {
+      const runStub = sinon.stub().resolves({ result: 'some' });
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          runDocker: runStub
+        }
+      });
+
+      const serverless = {
+        ...sls,
+        service: {
+          package: {},
+          functions: {
+            somefunc: {
+              st2_function: 'some.function'
+            }
+          }
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+      instance.clonePack = sinon.stub().resolves();
+      instance.getAction = sinon.stub().resolves();
+      instance.copyAdapter = sinon.stub().resolves();
+      instance.installCommonsDockerized = sinon.stub().resolves();
+
+      await expect(instance.runDocker('somefunc', '{"inputData": true}', {
+        verbose: true
+      })).to.eventually.be.fulfilled;
+      expect(runStub).to.be.calledOnce;
+      expect(runStub).to.be.calledWith(
+        'lambci/lambda:python2.7',
+        ['/Volumes/StackStorm/serverless-plugin-stackstorm/~st2:/var/task/~st2'],
+        [
+          'ST2_ACTION=some.function',
+          [
+            'PYTHONPATH=/var/task/~st2',
+            '/var/task/~st2/deps/lib/python2.7/site-packages',
+            '/var/task/~st2/deps/lib64/python2.7/site-packages',
+            '/var/task/~st2/virtualenvs/some/lib/python2.7/site-packages',
+            '/var/task/~st2/virtualenvs/some/lib64/python2.7/site-packages'
+          ].join(':')
+        ],
+        ['~st2/handler.basic', '{"inputData": true}']
+      );
+    });
+
+    it('should read input data from stdio', async () => {
+      const runStub = sinon.stub().resolves({ result: 'some' });
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          runDocker: runStub
+        },
+        'get-stdin': sinon.stub().resolves('{"inputStream": false}')
+      });
+
+      const serverless = {
+        ...sls,
+        service: {
+          package: {},
+          functions: {
+            somefunc: {
+              st2_function: 'some.function'
+            }
+          }
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+      instance.clonePack = sinon.stub().resolves();
+      instance.getAction = sinon.stub().resolves();
+      instance.copyAdapter = sinon.stub().resolves();
+      instance.installCommonsDockerized = sinon.stub().resolves();
+
+      await expect(instance.runDocker('somefunc')).to.eventually.be.fulfilled;
+      expect(runStub).to.be.calledOnce;
+      expect(runStub).to.be.calledWith(
+        'lambci/lambda:python2.7',
+        ['/Volumes/StackStorm/serverless-plugin-stackstorm/~st2:/var/task/~st2'],
+        [
+          'ST2_ACTION=some.function',
+          [
+            'PYTHONPATH=/var/task/~st2',
+            '/var/task/~st2/deps/lib/python2.7/site-packages',
+            '/var/task/~st2/deps/lib64/python2.7/site-packages',
+            '/var/task/~st2/virtualenvs/some/lib/python2.7/site-packages',
+            '/var/task/~st2/virtualenvs/some/lib64/python2.7/site-packages'
+          ].join(':')
+        ],
+        ['~st2/handler.basic', '{"inputStream": false}']
+      );
+    });
+
+    it('should read input data from file', async () => {
+      const runStub = sinon.stub().resolves({ result: 'some' });
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          runDocker: runStub
+        }
+      });
+
+      const serverless = {
+        ...sls,
+        config: {
+          servicePath: '~'
+        },
+        service: {
+          package: {},
+          functions: {
+            somefunc: {
+              st2_function: 'some.function'
+            }
+          }
+        },
+        utils: {
+          fileExistsSync: sinon.stub().returns(true),
+          readFileSync: sinon.stub().returns('{"inputFile": "some"}')
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+      instance.clonePack = sinon.stub().resolves();
+      instance.getAction = sinon.stub().resolves();
+      instance.copyAdapter = sinon.stub().resolves();
+      instance.installCommonsDockerized = sinon.stub().resolves();
+
+      await expect(instance.runDocker('somefunc', null, {
+        path: 'some'
+      })).to.eventually.be.fulfilled;
+      expect(runStub).to.be.calledOnce;
+      expect(runStub).to.be.calledWith(
+        'lambci/lambda:python2.7',
+        ['/Volumes/StackStorm/serverless-plugin-stackstorm/~st2:/var/task/~st2'],
+        [
+          'ST2_ACTION=some.function',
+          [
+            'PYTHONPATH=/var/task/~st2',
+            '/var/task/~st2/deps/lib/python2.7/site-packages',
+            '/var/task/~st2/deps/lib64/python2.7/site-packages',
+            '/var/task/~st2/virtualenvs/some/lib/python2.7/site-packages',
+            '/var/task/~st2/virtualenvs/some/lib64/python2.7/site-packages'
+          ].join(':')
+        ],
+        ['~st2/handler.basic', '{"inputFile": "some"}']
+      );
+    });
+
+    it('should reject if file does not exist', async () => {
+      const runStub = sinon.stub().resolves({ result: 'some' });
+      const StackStorm = mock('./index.js', {
+        './lib/docker': {
+          runDocker: runStub
+        }
+      });
+
+      const serverless = {
+        ...sls,
+        config: {
+          servicePath: '~'
+        },
+        service: {
+          package: {},
+          functions: {
+            somefunc: {
+              st2_function: 'some.function'
+            }
+          }
+        },
+        utils: {
+          fileExistsSync: sinon.stub().returns(false),
+          readFileSync: sinon.stub().returns('{"inputFile": "some"}')
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+      instance.clonePack = sinon.stub().resolves();
+      instance.getAction = sinon.stub().resolves();
+      instance.copyAdapter = sinon.stub().resolves();
+      instance.installCommonsDockerized = sinon.stub().resolves();
+
+      await expect(instance.runDocker('somefunc', null, {
+        path: 'some'
+      })).to.eventually.be.rejected;
+
+    });
+  });
+
+  describe('#showActionInfo', () => {
+    it('should display action help', async () => {
+      const getStub = sinon.stub();
+
+      getStub
+        .withArgs('https://index.stackstorm.org/v1/packs/some/actions/action.with.dots.json')
+        .resolves({
+          data: {
+            'description': 'register a server to the SLB',
+            'enabled': true,
+            'entry_point': 'ax_action_runner.py',
+            'name': 'add_slb_server',
+            'parameters': {
+              'action': {
+                'default': 'create',
+                'immutable': true,
+                'type': 'string'
+              },
+              'appliance': {
+                'description': 'The appliance information to connect, which is specified at the "appliance" parameter in the configuration.',
+                'required': true,
+                'type': 'string'
+              }
+            },
+            'runner_type': 'python-script'
+          }
+        });
+
+      getStub
+        .withArgs('https://index.stackstorm.org/v1/packs/some/config.schema.json')
+        .resolves({
+          data: {
+            'appliance': {
+              'description': 'Appliance parameters to connect',
+              'type': 'array'
+            }
+          }
+        });
+
+      const StackStorm = mock('./index.js', {
+        'axios': {
+          get: getStub
+        }
+      });
+
+      const serverless = {
+        ...sls,
+        cli: {
+          consoleLog: sinon.spy()
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+
+      await expect(instance.showActionInfo('some.action.with.dots')).to.eventually.be.fulfilled;
+      expect(serverless.cli.consoleLog).to.be.calledWith([
+        '\u001b[33msome.action.with.dots\u001b[39m \u001b[2m.........\u001b[22m register a server to the SLB',
+        '\u001b[33m\u001b[4mParameters\u001b[24m\u001b[39m',
+        '  \u001b[33maction [string] \u001b[39m \u001b[2m............\u001b[22m \u001b[2mdescription is missing\u001b[22m',
+        '  \u001b[33mappliance [string] (required)\u001b[39m  The appliance information to connect, which is specified at the "appliance" parameter in the configuration.',
+        '\u001b[33m\u001b[4mConfig\u001b[24m\u001b[39m',
+        '  \u001b[33mappliance [array] \u001b[39m \u001b[2m..........\u001b[22m Appliance parameters to connect'
+      ].join('\n'));
     });
   });
 });

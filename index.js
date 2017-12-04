@@ -347,8 +347,8 @@ class StackstormPlugin {
     throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
   }
 
-  async runDocker(funcName, data, opts) {
-    if (!opts.data) {
+  async runDocker(funcName, data, opts={}) {
+    if (!data) {
       if (opts.path) {
         const absolutePath = path.isAbsolute(opts.path) ?
           opts.path :
@@ -358,10 +358,10 @@ class StackstormPlugin {
           throw new this.serverless.classes.Error('The file you provided does not exist.');
         }
 
-        opts.data = this.serverless.utils.readFileSync(absolutePath);
+        data = this.serverless.utils.readFileSync(absolutePath);
       } else {
         try {
-          opts.data = await stdin();
+          data = await stdin();
         } catch (exception) {
           // resolve if no stdin was provided
         }

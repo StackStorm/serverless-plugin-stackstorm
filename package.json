@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
-    "test": "mocha \"./{,!(node_modules)/**/}*.test.js\""
+    "test": "mocha \"./{,!(node_modules)/**/}*.test.js\"",
+    "cover": "nyc --reporter=lcovonly npm test"
   },
   "engines": {
     "node": "^8.4.0"
@@ -29,6 +30,7 @@
     "eslint": "4.9.0",
     "eslint-plugin-async-await": "0.0.0",
     "mocha": "4.0.1",
+    "nyc": "11.3.0",
     "proxyquire": "1.8.0",
     "sinon": "4.0.2",
     "sinon-chai": "2.14.0"
