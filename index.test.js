@@ -1,4 +1,5 @@
 /* eslint-env mocha */
+const path = require('path');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const mock = require('proxyquire');
@@ -449,7 +450,7 @@ describe('index', () => {
       expect(runStub).to.be.calledOnce;
       expect(runStub).to.be.calledWith(
         'lambci/lambda:python2.7',
-        ['/Volumes/StackStorm/serverless-plugin-stackstorm/~st2:/var/task/~st2'],
+        [`${path.resolve('./~st2')}:/var/task/~st2`],
         [
           'ST2_ACTION=some.function',
           [
@@ -495,7 +496,7 @@ describe('index', () => {
       expect(runStub).to.be.calledOnce;
       expect(runStub).to.be.calledWith(
         'lambci/lambda:python2.7',
-        ['/Volumes/StackStorm/serverless-plugin-stackstorm/~st2:/var/task/~st2'],
+        [`${path.resolve('./~st2')}:/var/task/~st2`],
         [
           'ST2_ACTION=some.function',
           [
@@ -549,7 +550,7 @@ describe('index', () => {
       expect(runStub).to.be.calledOnce;
       expect(runStub).to.be.calledWith(
         'lambci/lambda:python2.7',
-        ['/Volumes/StackStorm/serverless-plugin-stackstorm/~st2:/var/task/~st2'],
+        [`${path.resolve('./~st2')}:/var/task/~st2`],
         [
           'ST2_ACTION=some.function',
           [
