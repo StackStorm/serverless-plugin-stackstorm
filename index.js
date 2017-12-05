@@ -347,8 +347,8 @@ class StackstormPlugin {
     throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
   }
 
-  async runDocker(funcName, data, opts) {
-    if (!opts.data) {
+  async runDocker(funcName, data, opts={}) {
+    if (!data) {
       if (opts.path) {
         const absolutePath = path.isAbsolute(opts.path) ?
           opts.path :
@@ -358,10 +358,10 @@ class StackstormPlugin {
           throw new this.serverless.classes.Error('The file you provided does not exist.');
         }
 
-        opts.data = this.serverless.utils.readFileSync(absolutePath);
+        data = this.serverless.utils.readFileSync(absolutePath);
       } else {
         try {
-          opts.data = await stdin();
+          data = await stdin();
         } catch (exception) {
           // resolve if no stdin was provided
         }
@@ -408,24 +408,49 @@ class StackstormPlugin {
   }
 
   async showActionInfo(action) {
-    const [ packName, actionName ] = action.split('.');
+    const [ packName, ...actionNameRest ] = action.split('.');
+    const actionName = actionNameRest.join('.');
+
     const metaUrl = urljoin(this.index_root, 'packs', packName, 'actions', `${actionName}.json`);
-    const packMeta = await request.get(metaUrl).then(res => res.data);
+    const packRequest = request.get(metaUrl).then(res => res.data);
+
+    const configUrl = urljoin(this.index_root, 'packs', packName, 'config.schema.json');
+    const configRequest = request.get(configUrl).then(res => res.data);
 
     const dots = 30;
-    const usage = packMeta.description;
     const indent = '  ';
 
     const msg = [];
-    msg.push(`${chalk.yellow.underline('Action')}`);
-    msg.push(`${chalk.yellow(action)} ${chalk.dim(_.repeat('.', dots - action.length))} ${usage}`);
 
-    for (let name in packMeta.parameters) {
-      const param = packMeta.parameters[name];
-      const title = `${name} [${param.type}] ${param.required ? '(required)' : ''}`;
-      const dotsLength = dots - indent.length - title.length;
-      const usage = param.description;
-      msg.push(`${indent}${chalk.yellow(title)} ${chalk.dim(_.repeat('.', dotsLength))} ${usage}`);
+    try {
+      const packMeta = await packRequest;
+      const usage = packMeta.description || chalk.dim('action description is missing');
+
+      msg.push(`${chalk.yellow(action)} ${chalk.dim(_.repeat('.', dots - action.length))} ${usage}`);
+      msg.push(`${chalk.yellow.underline('Parameters')}`);
+      for (let name in packMeta.parameters) {
+        const param = packMeta.parameters[name];
+        const title = `${name} [${param.type}] ${param.required ? '(required)' : ''}`;
+        const dotsLength = dots - indent.length - title.length;
+        const usage = param.description || chalk.dim('description is missing');
+        msg.push(`${indent}${chalk.yellow(title)} ${chalk.dim(_.repeat('.', dotsLength))} ${usage}`);
+      }
+    } catch (e) {
+      throw new Error(`No such action in the index: ${action}`);
+    }
+
+    try {
+      const configMeta = await configRequest;
+      msg.push(`${chalk.yellow.underline('Config')}`);
+      for (let name in configMeta) {
+        const param = configMeta[name];
+        const title = `${name} [${param.type}] ${param.required ? '(required)' : ''}`;
+        const dotsLength = dots - indent.length - title.length;
+        const usage = param.description || chalk.dim('description is missing');
+        msg.push(`${indent}${chalk.yellow(title)} ${chalk.dim(_.repeat('.', dotsLength))} ${usage}`);
+      }
+    } catch (e) {
+      msg.push(chalk.dim('The action does not require config parameters'));
     }
 
     this.serverless.cli.consoleLog(msg.join('\n'));
@@ -445,7 +470,8 @@ class StackstormPlugin {
           throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
         }
 
-        const [ packName, actionName ] = func.st2_function.split('.');
+        const [ packName, ...actionNameRest ] = func.st2_function.split('.');
+        const actionName = actionNameRest.join('.');
         await this.clonePack(packName);
         await this.getAction(packName, actionName);
 

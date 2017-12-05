@@ -26,21 +26,17 @@ provider:
 functions:
   get_issue:
     st2_function: github.get_issue # `st2_function` notation replaces `handler`. The rest is the same.
-    st2_config:
-      user: enykeev
+    st2_parameters:
+      user: "{{ input.pathParameters.user }}"
+      repo: "{{ input.pathParameters.repo }}"
+      issue_id: "{{ input.pathParameters.issue_id }}"
+    st2_output:
+      statusCode: 200
+      body: "{{ output.result.body }}"
     events:
       - http:
           method: GET
           path: issues/{user}/{repo}/{issue_id}
-          integration: lambda
-          request:
-            template:
-              application/json: >
-                {
-                  "user": "$input.params('user')",
-                  "repo": "$input.params('repo')",
-                  "issue_id": "$input.params('issue_id')"
-                }
 
 custom:
   stackstorm:
@@ -52,6 +48,31 @@ plugins:
   - serverless-plugin-stackstorm
 ```
 
+There are few new options inside the function definition:
+  - `st2_function` allows you to pick up a function you want to turn into a lambda
+  - `st2_parameters` defines how input event parameters should be transformed to match the parameters list st2 action expects
+  - `st2_output` defines the transformation that should be applied to the action output to form a result of lambda execution
+  - `st2_config` sets config parameters for the action. Config parameters are pack-wide in st2 and are commonly used for authentication tokens and such.
+
+If you are in doubt on the list of parameters given StackStorm action expects, check action info:
+```
+$ sls stackstorm info --action github.get_issue
+github.get_issue .............. Retrieve information about a particular Github issue.
+Parameters
+  issue_id [string] (required)  Issue id
+  repo [string] (required) .... Repository name.
+  user [string] (required) .... User / organization name.
+Config
+  base_url [string] (required)  The GitHub URL, for GitHub Enterprise please set enterprise_url.
+  deployment_environment [string] (required)  The environment for this StackStorm server.
+  enterprise_url [string]  .... GitHub API url (including /api/v3) of your GitHub Enterprise hostname.
+  github_type [string] (required)  Default to either github or enterprise.
+  password [string]  .......... GitHub Password
+  repository_sensor [object]  . Sensor specific settings.
+  token [string] (required) ... GitHub oAuth Token
+  user [string]  .............. GitHub Username
+```
+
 Then deploy your function to the cloud
 ```
 sls deploy
@@ -61,6 +82,42 @@ or invoke it locally
 ```
 echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke local --function get_issue
 ```
+
+Additionally, if you're running the OS that's not binary compatible with lambda environment, we've added an option of running lambdas inside docker container. You can do that with this passage:
+```
+sls stackstorm docker run -f get_issue -d '{"issue_id": "222"}' --verbose
+```
+
+The option `--verbose` shows you the whole transformation routine that happened during a particular call:
+```
+Incoming event ->
+{
+  "issue_id": "222"
+}
+-> Parameter transformer ->
+{
+  "repo": "st2",
+  "issue_id": "222",
+  "user": "StackStorm"
+}
+-> Action call ->
+{
+  "result": {
+    "url": "https://github.com/StackStorm/st2/pull/222",
+    "created_at": "2014-07-14T19:25:46.000000+00:00",
+    ...
+  },
+  "exit_code": 0,
+  "stderr": "",
+  "stdout": ""
+}
+-> Output transformer ->
+{
+  "result": "2014-07-14T19:25:46.000000+00:00"
+}
+```
+
+and `--passthrough` option allows you to skip the action call directly and pass input parameters directly to the output transformer for experimenting.
 
 ## Commands
 
