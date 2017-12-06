@@ -6,15 +6,21 @@
 Run StackStorm actions serverless and stackstormless.
 
 ## Prerequisite
+- [Serverless framework](https://serverless.com/framework/docs/getting-started/)
 - docker - https://docs.docker.com/engine/installation/
+- NodeJS, no less than v9
 
 ## Getting Started
+Init with `package.json`:
+```
+npm init   
+```
 Install the plugin
 ```
 npm i --save-dev serverless-plugin-stackstorm
 ```
 
-Configure your service to use the plugin
+Configure your service to use the plugin by creating `serverless.yml` file.
 
 ```yaml
 service: my-service
@@ -80,12 +86,12 @@ sls deploy
 
 or invoke it locally
 ```
-echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke local --function get_issue
+echo '{"user": "pathParameters": {"StackStorm", "repo": "st2", "issue_id": "3785"}}' | sls invoke local --function get_issue
 ```
 
 Additionally, if you're running the OS that's not binary compatible with lambda environment, we've added an option of running lambdas inside docker container. You can do that with this passage:
 ```
-sls stackstorm docker run -f get_issue -d '{"issue_id": "222"}' --verbose
+sls stackstorm docker run -f get_issue -d '{"user": "pathParameters": {"StackStorm", "repo": "st2", "issue_id": "3785"}}' --verbose
 ```
 
 The option `--verbose` shows you the whole transformation routine that happened during a particular call:
