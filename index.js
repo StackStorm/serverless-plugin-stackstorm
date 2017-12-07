@@ -50,7 +50,7 @@ class StackstormPlugin {
           return this.copyPackDeps(this.options.pack);
         }
 
-        return this.copyAllPacksDeps();
+        return this.copyAllPacksDeps({ force: true });
       },
       'stackstorm:info:info': () => this.showActionInfo(this.options.action),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
@@ -222,6 +222,11 @@ class StackstormPlugin {
 
     this.index_root = stackstorm && stackstorm.indexRoot || 'https://index.stackstorm.org/v1/';
     this.index_url = stackstorm && stackstorm.index || urljoin(this.index_root, 'index.json');
+
+    this.st2common_pkg = stackstorm && stackstorm.st2common_pkg
+      || 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
+    this.python_runner_pkg = stackstorm && stackstorm.python_runner_pkg
+      || 'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner';
   }
 
   async getIndex() {
@@ -242,12 +247,9 @@ class StackstormPlugin {
   }
 
   async copyDeps() {
-    const st2common_pkg = 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common';
-    const python_runner_pkg = 'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner';
-
     this.serverless.cli.log('Installing StackStorm adapter dependencies');
     const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
-    await this.execDocker(['pip', 'install', '-I', st2common_pkg, python_runner_pkg, '--prefix', prefix]);
+    await this.execDocker(['pip', 'install', '-I', this.st2common_pkg, this.python_runner_pkg, '--prefix', prefix]);
   }
 
   async copyPackDeps(pack) {
@@ -262,12 +264,15 @@ class StackstormPlugin {
     ]);
   }
 
-  async copyAllPacksDeps() {
-    this.serverless.cli.log('Creating virtual environments for packs');
+  async copyAllPacksDeps({ force } = {}) {
+    this.serverless.cli.log('Ensuring virtual environments for packs');
     const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
-    for (let pack in packs) {
-      await this.copyPackDeps(packs[pack]);
+    for (let pack of packs) {
+      const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/virtualenvs/${pack}`);
+      if (force || !depsExists) {
+        await this.copyPackDeps(pack);
+      }
     }
   }
 
@@ -298,12 +303,12 @@ class StackstormPlugin {
 
   getFunctions() {
     return _.map(this.serverless.service.functions, func => {
-      if (func.st2_function) {
+      if (func.stackstorm) {
         if (func.handler) {
-          throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
+          throw new this.serverless.classes.Error('properties stackstorm and handler are mutually exclusive');
         }
 
-        return func.st2_function;
+        return func.stackstorm.action;
       }
     }).filter(Boolean);
   }
@@ -320,6 +325,8 @@ class StackstormPlugin {
 
   async startDocker() {
     if (!this.dockerId) {
+      await this.pullDockerImage();
+
       this.serverless.cli.log('Spin Docker container to build python dependencies');
       const volume = `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`;
       this.dockerId = await startDocker(this.dockerBuildImage, volume);
@@ -339,12 +346,12 @@ class StackstormPlugin {
   }
 
   async execDocker(cmd) {
-    const dockerId = this.dockerId || this.options.dockerId;
-    if (dockerId) {
-      return await execDocker(dockerId, cmd);
+    let dockerId = this.dockerId || this.options.dockerId;
+    if (!dockerId) {
+      dockerId = await this.startDocker();
     }
 
-    throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
+    return await execDocker(dockerId, cmd);
   }
 
   async runDocker(funcName, data, opts={}) {
@@ -460,32 +467,32 @@ class StackstormPlugin {
     let needCommons = false;
 
     this.serverless.service.package.exclude = (this.serverless.service.package.exclude || [])
-      .concat(['.st2/**/.git/**']);
+      .concat([`${MAGIC_FOLDER}/**/.git/**`]);
 
     for (let key of Object.keys(this.serverless.service.functions)) {
       const func = this.serverless.service.functions[key];
 
-      if (func.st2_function) {
+      if (func.stackstorm) {
         if (func.handler) {
-          throw new this.serverless.classes.Error('properties st2_function and handler are mutually exclusive');
+          throw new this.serverless.classes.Error('properties stackstorm and handler are mutually exclusive');
         }
 
-        const [ packName, ...actionNameRest ] = func.st2_function.split('.');
+        const [ packName, ...actionNameRest ] = func.stackstorm.action.split('.');
         const actionName = actionNameRest.join('.');
         await this.clonePack(packName);
         await this.getAction(packName, actionName);
 
         func.handler = `${MAGIC_FOLDER}/handler.stackstorm`;
         func.environment = func.environment || {};
-        func.environment.ST2_ACTION = func.st2_function;
-        if (func.st2_config) {
-          func.environment.ST2_CONFIG = JSON.stringify(func.st2_config);
+        func.environment.ST2_ACTION = func.stackstorm.action;
+        if (func.stackstorm.config) {
+          func.environment.ST2_CONFIG = JSON.stringify(func.stackstorm.config);
         }
-        if (func.st2_parameters) {
-          func.environment.ST2_PARAMETERS = JSON.stringify(func.st2_parameters);
+        if (func.stackstorm.input) {
+          func.environment.ST2_PARAMETERS = JSON.stringify(func.stackstorm.input);
         }
-        if (func.st2_output) {
-          func.environment.ST2_OUTPUT = JSON.stringify(func.st2_output);
+        if (func.stackstorm.output) {
+          func.environment.ST2_OUTPUT = JSON.stringify(func.stackstorm.output);
         }
         func.environment.PYTHONPATH = DEFAULT_PYTHON_PATH
           .concat([
@@ -536,10 +543,6 @@ class StackstormPlugin {
   }
 
   async installCommonsDockerized() {
-    await this.pullDockerImage();
-
-    await this.startDocker();
-
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
     if (!depsExists) {
       await this.copyDeps();
@@ -547,7 +550,11 @@ class StackstormPlugin {
 
     await this.copyAllPacksDeps();
 
-    await this.stopDocker();
+    try {
+      await this.stopDocker();
+    } catch (e) {
+      // Do nothing
+    }
   }
 }
 
