@@ -3,8 +3,8 @@
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
 [![npm version](https://badge.fury.io/js/serverless-plugin-stackstorm.svg)](https://badge.fury.io/js/serverless-plugin-stackstorm)
 
-Run [StackStorm Exchange](https://exchange.stackstorm.com/) actions as AWS Lambda
-with [serverless](http://serverless.com/).
+Run ready to use actions from [StackStorm Exchange](https://exchange.stackstorm.com/)
+as AWS Lambda with [serverless framework](http://serverless.com/). Serverless and Stackstormless.
 
 ## Prerequisite
 - [Serverless framework](https://serverless.com/framework/docs/getting-started/)
@@ -21,6 +21,10 @@ Install the plugin
 ```
 npm i --save-dev serverless-plugin-stackstorm
 ```
+
+Browse [StackStorm Exchagne](https://exchange.stackstorm.com/)
+to find the integration pack and an action you'd like to use.
+In the example below we use `github.get_issue` from [GitHub integration pack](https://github.com/StackStorm-Exchange/stackstorm-github).
 
 Configure your service to use the plugin by creating `serverless.yml` file.
 
