@@ -284,13 +284,19 @@ describe('index', () => {
         service: {
           functions: {
             one: {
-              st2_function: 'some.one'
+              stackstorm: {
+                action: 'some.one'
+              }
             },
             two: {
-              st2_function: 'some.two'
+              stackstorm: {
+                action: 'some.two'
+              }
             },
             three: {
-              st2_function: 'someother.three'
+              stackstorm: {
+                action: 'someother.three'
+              }
             },
             four: {
               handler: 'some'
@@ -441,7 +447,9 @@ describe('index', () => {
           package: {},
           functions: {
             somefunc: {
-              st2_function: 'some.function'
+              stackstorm: {
+                action: 'some.function'
+              }
             }
           }
         }
@@ -489,7 +497,9 @@ describe('index', () => {
           package: {},
           functions: {
             somefunc: {
-              st2_function: 'some.function'
+              stackstorm: {
+                action: 'some.function'
+              }
             }
           }
         }
@@ -537,7 +547,9 @@ describe('index', () => {
           package: {},
           functions: {
             somefunc: {
-              st2_function: 'some.function'
+              stackstorm: {
+                action: 'some.function'
+              }
             }
           }
         },
@@ -591,7 +603,9 @@ describe('index', () => {
           package: {},
           functions: {
             somefunc: {
-              st2_function: 'some.function'
+              stackstorm: {
+                action: 'some.function'
+              }
             }
           }
         },
