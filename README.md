@@ -1,4 +1,4 @@
-# Serverless StackStorm plugin
+# Serverless StackStorm Plugin
 
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
 [![npm version](https://badge.fury.io/js/serverless-plugin-stackstorm.svg)](https://badge.fury.io/js/serverless-plugin-stackstorm)
@@ -7,19 +7,28 @@ Run ready to use actions from [StackStorm Exchange](https://exchange.stackstorm.
 as AWS Lambda with [serverless framework](http://serverless.com/). Serverless and Stackstormless.
 
 ## Prerequisite
+
 - [Serverless framework](https://serverless.com/framework/docs/getting-started/)
 - NodeJS, no less than v9
 - [Docker](https://docs.docker.com/engine/installation/) - used to build and local-run Lambda on any OS
 
 ## Getting Started
 
-Init with `package.json`:
+Install serverless dependency globally
+
+```bash
+npm install -g serverless
 ```
+
+Init with `package.json`:
+
+```bash
 npm init
 ```
 
-Install the plugin
-```
+Install the plugin:
+
+```bash
 npm i --save-dev serverless-plugin-stackstorm
 ```
 
@@ -66,6 +75,7 @@ There are few new options inside the function definition
   - `stackstorm.output` defines the transformation that should be applied to the action output to form a result of lambda execution
 
 If you are in doubt on the list of parameters given StackStorm action expects, check action info:
+
 ```
 $ sls stackstorm info --action github.get_issue
 github.get_issue .............. Retrieve information about a particular Github issue.
@@ -85,6 +95,7 @@ Config
 ```
 
 Then deploy your function to the cloud and invoke it:
+
 ```
 sls deploy
 
