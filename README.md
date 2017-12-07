@@ -12,6 +12,7 @@ as AWS Lambda with [serverless framework](http://serverless.com/). Serverless an
 - [Docker](https://docs.docker.com/engine/installation/) - used to build and local-run Lambda on any OS
 
 ## Getting Started
+
 Init with `package.json`:
 ```
 npm init
@@ -22,7 +23,7 @@ Install the plugin
 npm i --save-dev serverless-plugin-stackstorm
 ```
 
-Browse [StackStorm Exchagne](https://exchange.stackstorm.com/)
+Browse [StackStorm Exchange](https://exchange.stackstorm.com/)
 to find the integration pack and an action you'd like to use.
 In the example below we use `github.get_issue` from [GitHub integration pack](https://github.com/StackStorm-Exchange/stackstorm-github).
 
