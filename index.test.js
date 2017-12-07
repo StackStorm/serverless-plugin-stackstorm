@@ -141,7 +141,7 @@ describe('index', () => {
       ]);
     });
 
-    it('should throw an error if no docker container has been started', async () => {
+    it('should spin a docker container if one had not been started yet', async () => {
       const execStub = sinon.stub().resolves();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
@@ -150,8 +150,11 @@ describe('index', () => {
       });
 
       const instance = new StackStorm(sls, opts);
+      instance.startDocker = sinon.stub().resolves('some');
 
-      await expect(instance.copyDeps()).to.eventually.rejectedWith(CustomError);
+      await expect(instance.copyDeps()).to.eventually.be.fulfilled;
+      expect(instance.startDocker).to.be.calledOnce;
+      expect(instance.startDocker).to.be.calledWith();
     });
   });
 
@@ -180,7 +183,7 @@ describe('index', () => {
       ]);
     });
 
-    it('should throw an error if no docker container has been started', async () => {
+    it('should spin a docker container if one had not been started yet', async () => {
       const execStub = sinon.stub().resolves();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
@@ -189,8 +192,11 @@ describe('index', () => {
       });
 
       const instance = new StackStorm(sls, opts);
+      instance.startDocker = sinon.stub().resolves('some');
 
-      await expect(instance.copyPackDeps('dummypack')).to.eventually.be.rejectedWith(CustomError);
+      await expect(instance.copyDeps()).to.eventually.be.fulfilled;
+      expect(instance.startDocker).to.be.calledOnce;
+      expect(instance.startDocker).to.be.calledWith();
     });
   });
 
@@ -348,6 +354,7 @@ describe('index', () => {
       });
 
       const instance = new StackStorm(sls, opts);
+      instance.pullDockerImage = sinon.stub().resolves();
 
       await expect(instance.startDocker()).to.eventually.be.equal('deadbeef');
       expect(startStub).to.be.calledOnce;
@@ -363,6 +370,8 @@ describe('index', () => {
       });
 
       const instance = new StackStorm(sls, opts);
+      instance.pullDockerImage = sinon.stub().resolves();
+
       await instance.startDocker();
 
       await expect(instance.startDocker()).to.eventually.be.rejected;
