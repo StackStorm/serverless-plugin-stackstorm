@@ -263,7 +263,7 @@ class StackstormPlugin {
   }
 
   async copyAllPacksDeps({ force } = {}) {
-    this.serverless.cli.log('Creating virtual environments for packs');
+    this.serverless.cli.log('Ensuring virtual environments for packs');
     const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
     for (let pack of packs) {
@@ -323,6 +323,8 @@ class StackstormPlugin {
 
   async startDocker() {
     if (!this.dockerId) {
+      await this.pullDockerImage();
+
       this.serverless.cli.log('Spin Docker container to build python dependencies');
       const volume = `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`;
       this.dockerId = await startDocker(this.dockerBuildImage, volume);
@@ -342,12 +344,12 @@ class StackstormPlugin {
   }
 
   async execDocker(cmd) {
-    const dockerId = this.dockerId || this.options.dockerId;
-    if (dockerId) {
-      return await execDocker(dockerId, cmd);
+    let dockerId = this.dockerId || this.options.dockerId;
+    if (!dockerId) {
+      dockerId = await this.startDocker();
     }
 
-    throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
+    return await execDocker(dockerId, cmd);
   }
 
   async runDocker(funcName, data, opts={}) {
@@ -539,10 +541,6 @@ class StackstormPlugin {
   }
 
   async installCommonsDockerized() {
-    await this.pullDockerImage();
-
-    await this.startDocker();
-
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
     if (!depsExists) {
       await this.copyDeps();
@@ -550,7 +548,11 @@ class StackstormPlugin {
 
     await this.copyAllPacksDeps();
 
-    await this.stopDocker();
+    try {
+      await this.stopDocker();
+    } catch (e) {
+      // Do nothing
+    }
   }
 }
 
