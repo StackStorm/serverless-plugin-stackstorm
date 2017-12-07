@@ -242,12 +242,12 @@ class StackstormPlugin {
   }
 
   async copyAdapter() {
-    this.serverless.cli.log('Copying StackStorm adapter code');
+    this.serverless.cli.log('Copying StackStorm adapter code...');
     await fs.copy(__dirname + '/stackstorm', MAGIC_FOLDER);
   }
 
   async copyDeps() {
-    this.serverless.cli.log('Installing StackStorm adapter dependencies');
+    this.serverless.cli.log('Installing StackStorm adapter dependencies...');
     const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
     await this.execDocker(['pip', 'install', '-I', this.st2common_pkg, this.python_runner_pkg, '--prefix', prefix]);
   }
@@ -265,7 +265,7 @@ class StackstormPlugin {
   }
 
   async copyAllPacksDeps({ force } = {}) {
-    this.serverless.cli.log('Ensuring virtual environments for packs');
+    this.serverless.cli.log('Ensuring virtual environments for packs...');
     const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
     for (let pack of packs) {
@@ -282,7 +282,7 @@ class StackstormPlugin {
 
     const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
     try {
-      this.serverless.cli.log(`Cloning pack "${packMeta.ref || packMeta.name}"`);
+      this.serverless.cli.log(`Cloning pack "${packMeta.ref || packMeta.name}"...`);
       await git.Clone(packMeta.repo_url, localPath);
     } catch (e) {
       const repo = await git.Repository.open(localPath);
@@ -327,7 +327,7 @@ class StackstormPlugin {
     if (!this.dockerId) {
       await this.pullDockerImage();
 
-      this.serverless.cli.log('Spin Docker container to build python dependencies');
+      this.serverless.cli.log('Spinning Docker container to build python dependencies...');
       const volume = `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`;
       this.dockerId = await startDocker(this.dockerBuildImage, volume);
       return this.dockerId;
@@ -338,7 +338,7 @@ class StackstormPlugin {
 
   async stopDocker(dockerId = this.dockerId) {
     if (dockerId) {
-      this.serverless.cli.log('Stop Docker container');
+      this.serverless.cli.log('Stopping Docker container...');
       return await stopDocker(dockerId);
     }
 
@@ -384,7 +384,7 @@ class StackstormPlugin {
 
     const cmd = [`${MAGIC_FOLDER}/handler.${opts.passthrough ? 'passthrough' : 'basic'}`, data];
 
-    this.serverless.cli.log('Spin Docker container to run a function');
+    this.serverless.cli.log('Spinning Docker container to run a function locally...');
     const { result } = await runDocker(this.dockerRunImage, volumes, envs, cmd)
       .catch(e => {
         if (e.result && e.result.errorMessage) {
@@ -520,7 +520,7 @@ class StackstormPlugin {
   async installCommonsLocally() {
     const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/deps`);
     if (!depsExists) {
-      this.serverless.cli.log('Ensure pip is installed');
+      this.serverless.cli.log('Checking if pip is installed...');
       await nopy.spawnPython([
         path.join(__dirname, 'node_modules/nopy/src/get-pip.py'), '--user', '--quiet'
       ], {
@@ -530,7 +530,7 @@ class StackstormPlugin {
         }
       });
 
-      this.serverless.cli.log('Installing StackStorm adapter dependencies');
+      this.serverless.cli.log('Installing StackStorm adapter dependencies...');
       await nopy.spawnPython([
         '-m', 'pip', 'install',
         'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common',
