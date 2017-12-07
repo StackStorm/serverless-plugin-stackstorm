@@ -25,34 +25,39 @@ provider:
 
 functions:
   get_issue:
-    st2_function: github.get_issue # `st2_function` notation replaces `handler`. The rest is the same.
-    st2_parameters:
-      user: "{{ input.pathParameters.user }}"
-      repo: "{{ input.pathParameters.repo }}"
-      issue_id: "{{ input.pathParameters.issue_id }}"
-    st2_output:
-      statusCode: 200
-      body: "{{ output.result.body }}"
+    stackstorm: # `stackstorm` object replaces `handler`. The rest is the same.
+      action: github.get_issue
+      config:
+        token: ${env:GITHUB_TOKEN}
+      input:
+        user: "{{ input.pathParameters.user }}"
+        repo: "{{ input.pathParameters.repo }}"
+        issue_id: "{{ input.pathParameters.issue_id }}"
+      output:
+        statusCode: 200
+        body: "{{ output.result.body }}"
     events:
       - http:
           method: GET
           path: issues/{user}/{repo}/{issue_id}
 
-custom:
-  stackstorm:
-    runImage: 'lambci/lambda:python2.7'
-    buildImage: 'lambci/lambda:build-python2.7'
-    indexRoot: 'https://index.stackstorm.org/v1/'
+# custom:
+#   stackstorm:
+#     runImage: 'lambci/lambda:python2.7'
+#     buildImage: 'lambci/lambda:build-python2.7'
+#     indexRoot: 'https://index.stackstorm.org/v1/'
+#     st2common_pkg: 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common'
+#     python_runner_pkg: 'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner'
 
 plugins:
   - serverless-plugin-stackstorm
 ```
 
 There are few new options inside the function definition:
-  - `st2_function` allows you to pick up a function you want to turn into a lambda
-  - `st2_parameters` defines how input event parameters should be transformed to match the parameters list st2 action expects
-  - `st2_output` defines the transformation that should be applied to the action output to form a result of lambda execution
-  - `st2_config` sets config parameters for the action. Config parameters are pack-wide in st2 and are commonly used for authentication tokens and such.
+  - `stackstorm.action` allows you to pick up a function you want to turn into a lambda
+  - `stackstorm.config` sets config parameters for the action. Config parameters are pack-wide in stackstorm and are commonly used for authentication tokens and such.
+  - `stackstorm.input` defines how input event parameters should be transformed to match the parameters list stackstorm action expects
+  - `stackstorm.output` defines the transformation that should be applied to the action output to form a result of lambda execution
 
 If you are in doubt on the list of parameters given StackStorm action expects, check action info:
 ```
@@ -142,7 +147,7 @@ The available packs can be discovered in StackStorm Exchange (https://exchange.s
 
 ## Contributing to Exchange
 
-The StackStorm packs this plugin allows you to run on serverless infrastructure are all part of [StackStorm Exchange](https://github.com/StackStorm-Exchange). We encourage community members to contribute to this packs to enrich the entire ecosystem. The most simple way to help us is to try different packs, mark the one that works with `serverless` keyword and report ones that don't work for some reason. For now, the plugin only supports st2's python runner, but they represent more than 90% of exchange actions.
+The StackStorm packs this plugin allows you to run on serverless infrastructure are all part of [StackStorm Exchange](https://github.com/StackStorm-Exchange). We encourage community members to contribute to this packs to enrich the entire ecosystem. The most simple way to help us is to try different packs, mark the one that works with `serverless` keyword and report ones that don't work for some reason. For now, the plugin only supports stackstorm's python runner, but they represent more than 90% of exchange actions.
 
 ## Authors
 
