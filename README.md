@@ -85,13 +85,10 @@ sls deploy
 
 or invoke it locally
 ```
-echo '{"user": "StackStorm", "repo": "st2", "issue_id": "3785"}' | sls invoke local --function get_issue
-```
-
-Additionally, if you're running the OS that's not binary compatible with lambda environment, we've added an option of running lambdas inside docker container. You can do that with this passage:
-```
 sls stackstorm docker run -f get_issue -d '{"issue_id": "222"}' --verbose
 ```
+
+We've added an option of running lambdas inside docker container for when you're running the OS that's not binary compatible with lambda environment. You can still use `sls invoke local`, but you're doing it at your own risk.
 
 The option `--verbose` shows you the whole transformation routine that happened during a particular call:
 ```
