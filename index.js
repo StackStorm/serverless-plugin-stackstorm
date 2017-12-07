@@ -50,7 +50,7 @@ class StackstormPlugin {
           return this.copyPackDeps(this.options.pack);
         }
 
-        return this.copyAllPacksDeps();
+        return this.copyAllPacksDeps({ force: true });
       },
       'stackstorm:info:info': () => this.showActionInfo(this.options.action),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
@@ -262,12 +262,15 @@ class StackstormPlugin {
     ]);
   }
 
-  async copyAllPacksDeps() {
+  async copyAllPacksDeps({ force } = {}) {
     this.serverless.cli.log('Creating virtual environments for packs');
     const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
-    for (let pack in packs) {
-      await this.copyPackDeps(packs[pack]);
+    for (let pack of packs) {
+      const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/virtualenvs/${pack}`);
+      if (force || !depsExists) {
+        await this.copyPackDeps(pack);
+      }
     }
   }
 
