@@ -3,18 +3,26 @@
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
 [![npm version](https://badge.fury.io/js/serverless-plugin-stackstorm.svg)](https://badge.fury.io/js/serverless-plugin-stackstorm)
 
-Run StackStorm actions serverless and stackstormless.
+Run [StackStorm Exchange](https://exchange.stackstorm.com/) actions as AWS Lambda
+with [serverless](http://serverless.com/).
 
 ## Prerequisite
-- docker - https://docs.docker.com/engine/installation/
+- [Serverless framework](https://serverless.com/framework/docs/getting-started/)
+- NodeJS, no less than v9
+- [Docker](https://docs.docker.com/engine/installation/) - used to build and local-run Lambda on any OS
 
 ## Getting Started
+Init with `package.json`:
+```
+npm init
+```
+
 Install the plugin
 ```
 npm i --save-dev serverless-plugin-stackstorm
 ```
 
-Configure your service to use the plugin
+Configure your service to use the plugin by creating `serverless.yml` file.
 
 ```yaml
 service: my-service
@@ -35,25 +43,18 @@ functions:
         issue_id: "{{ input.pathParameters.issue_id }}"
       output:
         statusCode: 200
-        body: "{{ output.result.body }}"
+        body: "{{ output }}"
     events:
       - http:
           method: GET
           path: issues/{user}/{repo}/{issue_id}
 
-# custom:
-#   stackstorm:
-#     runImage: 'lambci/lambda:python2.7'
-#     buildImage: 'lambci/lambda:build-python2.7'
-#     indexRoot: 'https://index.stackstorm.org/v1/'
-#     st2common_pkg: 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common'
-#     python_runner_pkg: 'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner'
-
 plugins:
   - serverless-plugin-stackstorm
 ```
 
-There are few new options inside the function definition:
+There are few new options inside the function definition
+(see [serverless.example.yml](./serverless.example.yml) for more options):
   - `stackstorm.action` allows you to pick up a function you want to turn into a lambda
   - `stackstorm.config` sets config parameters for the action. Config parameters are pack-wide in stackstorm and are commonly used for authentication tokens and such.
   - `stackstorm.input` defines how input event parameters should be transformed to match the parameters list stackstorm action expects
@@ -78,19 +79,26 @@ Config
   user [string]  .............. GitHub Username
 ```
 
-Then deploy your function to the cloud
+Then deploy your function to the cloud and invoke it:
 ```
 sls deploy
+
+sls invoke --function get_issue --log \
+--data '{"pathParameters": {"user": "StackStorm", "repo": "st2", "issue_id": "3785"}}'
 ```
 
-or invoke it locally
+You can also invoke a function locally for testing. It runs in docker container to ensure
+compatibility with AWS lambda environment.
 ```
-sls stackstorm docker run -f get_issue -d '{"issue_id": "222"}' --verbose
+sls stackstorm docker run -f get_issue --verbose --passthrough -d '{"pathParameters": {"user": "StackStorm", "repo": "st2", "issue_id": "3785"}}'
 ```
 
-We've added an option of running lambdas inside docker container for when you're running the OS that's not binary compatible with lambda environment. You can still use `sls invoke local`, but you're doing it at your own risk.
+Note the options:
 
-The option `--verbose` shows you the whole transformation routine that happened during a particular call:
+* `--passthrough`: skips actual invocation - comes handy to ensure the input maps to action parameters right, without invoking the body of the lambda.
+* `--verbose`:  shows the transformation routine that happened for a particular input and output.
+
+Here is an example of a verbose output:
 ```
 Incoming event ->
 {
@@ -119,8 +127,6 @@ Incoming event ->
 }
 ```
 
-and `--passthrough` option allows you to skip the action call directly and pass input parameters directly to the output transformer for experimenting.
-
 ## Commands
 
   The plugin also provides a few optional commands. You don't have to use them as they are all included into `sls package`, but they still might be handy in some situations.
@@ -146,7 +152,4 @@ The available packs can be discovered in StackStorm Exchange (https://exchange.s
 
 The StackStorm packs this plugin allows you to run on serverless infrastructure are all part of [StackStorm Exchange](https://github.com/StackStorm-Exchange). We encourage community members to contribute to this packs to enrich the entire ecosystem. The most simple way to help us is to try different packs, mark the one that works with `serverless` keyword and report ones that don't work for some reason. For now, the plugin only supports stackstorm's python runner, but they represent more than 90% of exchange actions.
 
-## Authors
 
-* **Kirill Enykeev** - [enykeev](https://github.com/enykeev)
-* **Tomaz Muraus** - [Kami](https://github.com/Kami)
