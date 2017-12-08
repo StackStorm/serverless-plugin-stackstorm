@@ -1,13 +1,3 @@
-// Verify supported version of NodeJS is beig used
-const semver = require('semver');
-
-const current_nodejs_version = process.versions['node'];
-const required_nodejs_version = '8.0.0'
-
-if (semver.lt(current_nodejs_version, required_nodejs_version)) {
-  throw new Error(`NodeJs >= 8.0.0 is required (current version=${current_nodejs_version})`)
-}
-
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
