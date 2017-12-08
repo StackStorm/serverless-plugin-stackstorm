@@ -8,11 +8,12 @@ const request = require('axios');
 const stdin = require('get-stdin');
 const urljoin = require('url-join');
 const chalk = require('chalk');
+const expandHomeDir = require('expand-home-dir');
 
 const { pullDockerImage, startDocker, runDocker, execDocker, stopDocker } = require('./lib/docker');
 
 
-const MAGIC_FOLDER = '~st2';
+const MAGIC_FOLDER = expandHomeDir('~/st2');
 const INTERNAL_MAGIC_FOLDER = `/var/task/${MAGIC_FOLDER}`;
 const DEFAULT_PYTHON_PATH = [
   `${INTERNAL_MAGIC_FOLDER}`,

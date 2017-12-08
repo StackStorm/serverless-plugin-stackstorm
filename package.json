@@ -16,6 +16,7 @@
   "dependencies": {
     "axios": "0.16.2",
     "chalk": "2.3.0",
+    "expand-home-dir": "0.0.3",
     "fs-extra": "4.0.2",
     "get-stdin": "5.0.1",
     "js-yaml": "3.10.0",
