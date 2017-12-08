@@ -9,7 +9,7 @@ as AWS Lambda with [serverless framework](http://serverless.com/). Serverless an
 ## Prerequisite
 
 - [Serverless framework](https://serverless.com/framework/docs/getting-started/)
-- NodeJS, no less than v9
+- NodeJS ^8.4.0
 - [Docker](https://docs.docker.com/engine/installation/) - used to build and local-run Lambda on any OS
 
 ## Getting Started
