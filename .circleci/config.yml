@@ -1,6 +1,10 @@
 version: 2
 jobs:
   build:
+    - "javascript"
+    - "python"
+
+  javascript:
     working_directory: ~/serverless-plugin-stackstorm
     docker:
       - image: circleci/node:8.4.0
@@ -21,7 +25,8 @@ jobs:
       - run:
           name: Run tests
           command: npm test
-  python_build:
+
+  python:
     working_directory: ~/serverless-plugin-stackstorm
     docker:
       - image: circleci/python:2.7
