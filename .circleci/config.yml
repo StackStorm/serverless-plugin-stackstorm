@@ -1,9 +1,13 @@
-version: 2
-jobs:
-  build:
-    - "javascript"
-    - "python"
+version: 2.0
 
+workflows:
+  version: 2
+  build:
+    jobs:
+      - "javascript"
+       - "python"
+
+jobs:
   javascript:
     working_directory: ~/serverless-plugin-stackstorm
     docker:
