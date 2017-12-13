@@ -127,7 +127,9 @@ def base(event, context, passthrough=False, debug=False):
     LOG.info("Received event: " + json.dumps(event, indent=2))
 
     # Special case for Lambda function being called over HTTP via API gateway
-    # See https://serverless.com/framework/docs/providers/aws/events/apigateway#example-lambda-proxy-event-default
+    # See
+    # https://serverless.com/framework/docs/providers/aws/events/apigateway
+    # #example-lambda-proxy-event-default
     # for details
     is_event_body_string = (isinstance(event.get('body'), basestring) is True)
     content_type = event.get('headers', {}).get('Content-Type', '').lower()
