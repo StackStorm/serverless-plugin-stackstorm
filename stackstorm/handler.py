@@ -127,7 +127,8 @@ def base(event, context, passthrough=False, debug=False):
     # Special case for Lambda function being called over HTTP via API gateway
     # See https://serverless.com/framework/docs/providers/aws/events/apigateway#example-lambda-proxy-event-default
     # for details
-    if isinstance(event.get('body'), basestring):
+    content_type = event.get('headers', {}).get('Content-Type', '').lower()
+    if isinstance(event.get('body'), basestring) and content_type == 'application/json':
         try:
             event['body'] = json.loads(event['body'])
         except Exception:
