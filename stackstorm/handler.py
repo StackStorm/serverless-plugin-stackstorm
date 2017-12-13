@@ -110,7 +110,7 @@ def base(event, context, passthrough=False, debug=False):
     if isinstance(event.get('body'), basestring):
         try:
             event['body'] = json.loads(event['body'])
-        except:
+        except Exception:
             LOG.warn('`event` has `body` which is not JSON')
 
     action_name = os.environ['ST2_ACTION']
