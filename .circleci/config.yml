@@ -9,6 +9,9 @@ jobs:
       - restore_cache:
           key: dependency-cache-{{ checksum "package.json" }}
       - run:
+          name: Install Python test dependencies
+          command: pip install -r requirements-test.txt
+      - run:
           name: Install the package
           command: npm install
       - save_cache:
@@ -16,8 +19,14 @@ jobs:
           paths:
             - ./node_modules
       - run:
-          name: Lint
+          name: Javascript Lint
           command: npm run lint
+      - run:
+          name: Python Lint (flake8)
+          command: flake8 --config ./lint-configs/python/.flake8 stackstorm/handler.py
+      - run:
+          name: Python Lint (pylint)
+          command: pylint -E --rcfile=./lint-configs/python/.pylintrc stackstorm/handler.py
       - run:
           name: Run tests
           command: npm test
