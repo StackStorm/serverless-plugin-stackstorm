@@ -138,14 +138,14 @@ def base(event, context, passthrough=False, debug=False):
     # runner.execution_id = str(runner.execution.id)
     runner.entry_point = content_utils.get_entry_point_abs_path(pack=action_db.pack,
         entry_point=action_db.entry_point)
-    runner.context = {} # getattr(liveaction_db, 'context', dict())
+    runner.context = {}  # getattr(liveaction_db, 'context', dict())
     # runner.callback = getattr(liveaction_db, 'callback', dict())
     runner.libs_dir_path = content_utils.get_action_libs_abs_path(pack=action_db.pack,
         entry_point=action_db.entry_point)
 
     # For re-run, get the ActionExecutionDB in which the re-run is based on.
-    rerun_ref_id = runner.context.get('re-run', {}).get('ref')
-    runner.rerun_ex_ref = ActionExecution.get(id=rerun_ref_id) if rerun_ref_id else None
+    # rerun_ref_id = runner.context.get('re-run', {}).get('ref')
+    # runner.rerun_ex_ref = ActionExecution.get(id=rerun_ref_id) if rerun_ref_id else None
 
     config_schema = CONFIG_SCHEMAS.get(action_db.pack, None)
     config_values = os.environ.get('ST2_CONFIG', None)
@@ -215,14 +215,17 @@ def base(event, context, passthrough=False, debug=False):
         'result': result
     }
 
+
 # for backwards compatibility
 def stackstorm(*args, **kwargs):
     res = base(*args, **kwargs)
     return res['result']
 
+
 def basic(*args, **kwargs):
     res = base(*args, **kwargs)
     return res
+
 
 def passthrough(*args, **kwargs):
     res = base(*args, passthrough=True, **kwargs)
