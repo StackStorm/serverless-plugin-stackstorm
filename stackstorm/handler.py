@@ -115,15 +115,18 @@ def base(event, context, passthrough=False, debug=False):
     else:
         logger.setLevel(logging.INFO)
 
-    try:
-        if isinstance(event, basestring):
+    if isinstance(event, basestring):
+        try:
             event = json.loads(event)
-    except ValueError as e:
-        print("ERROR: Can not parse `event`: '{}'\n{}".format(str(event), str(e)))
-        raise
+        except ValueError as e:
+            LOG.error("ERROR: Can not parse `event`: '{}'\n{}".format(str(event), str(e)))
+            raise e
 
     LOG.info("Received event: " + json.dumps(event, indent=2))
 
+    # Special case for Lambda function being called over HTTP via API gateway
+    # See https://serverless.com/framework/docs/providers/aws/events/apigateway#example-lambda-proxy-event-default
+    # for details
     if isinstance(event.get('body'), basestring):
         try:
             event['body'] = json.loads(event['body'])
