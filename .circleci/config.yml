@@ -41,7 +41,6 @@ jobs:
           command: |
             python -m venv venv
             . venv/bin/activate
-          command: pip install -r requirements-test.txt
       - run:
           name: Python Lint (flake8)
           command: venv/bin/flake8 --config ./lint-configs/python/.flake8 stackstorm/handler.py
