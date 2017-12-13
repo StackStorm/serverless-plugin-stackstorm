@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import yaml
 import uuid
 import logging
 import six
@@ -11,23 +10,16 @@ from stevedore.driver import DriverManager
 from st2common.bootstrap.actionsregistrar import ActionsRegistrar
 from st2common.constants.action import LIVEACTION_STATUS_SUCCEEDED
 from st2common.constants.pack import CONFIG_SCHEMA_FILE_NAME
-from st2common.constants.runners import MANIFEST_FILE_NAME
 from st2common.constants.system import VERSION_STRING
-from st2common.content.loader import ContentPackLoader, RunnersLoader, MetaLoader
+from st2common.content.loader import ContentPackLoader, MetaLoader
 from st2common.content import utils as content_utils
 from st2common.exceptions import actionrunner
 from st2common.exceptions.param import ParamException
 from st2common.models.api.action import ActionAPI, RunnerTypeAPI
 from st2common.models.api.pack import ConfigSchemaAPI
-from st2common.models.db.action import ActionDB
-from st2common.models.db.runner import RunnerTypeDB
 from st2common.runners.base import ActionRunner
-from st2common.runners.base import get_runner
 from st2common.util.pack import validate_config_against_schema
 from st2common.util import param as param_utils
-import st2common.validators.api.action as action_validator
-
-import config
 
 
 del sys.argv[1:]
@@ -209,7 +201,7 @@ def base(event, context, passthrough=False):
     output = output or {}
     if output.get('stderr', None):
         LOG.info('Action stderr')
-        LOG.info(output_parsed['stderr'])
+        LOG.info(output['stderr'])
 
     return {
         'event': event,
