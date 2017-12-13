@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Install Python test dependencies
           command: |
-            python -m venv venv
+            virtualenv venv
             . venv/bin/activate
       - run:
           name: Python Lint (flake8)
