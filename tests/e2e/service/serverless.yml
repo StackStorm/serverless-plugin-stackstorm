@@ -1,0 +1,32 @@
+service: my-service
+
+provider:
+  name: aws
+  runtime: python2.7 # StackStorm runners are based on Python 2
+
+functions:
+  get_issue:
+    stackstorm: # `stackstorm` object replaces `handler`. The rest is the same.
+      action: github.get_issue
+      input:
+        user: "{{ input.pathParameters.user }}"
+        repo: "{{ input.pathParameters.repo }}"
+        issue_id: "{{ input.pathParameters.issue_id }}"
+      output:
+        statusCode: 200
+        body: "{{ output }}"
+    events:
+      - http:
+          method: GET
+          path: issues/{user}/{repo}/{issue_id}
+
+custom:
+  stackstorm:
+    indexRoot: http://localhost:45032/v1/
+    st2common_pkg: /dist/st2/st2common
+    python_runner_pkg: /dist/st2/contrib/runners/python_runner
+    buildImage: slstest
+    runImage: slstest
+
+plugins:
+  - ../../../../index.js

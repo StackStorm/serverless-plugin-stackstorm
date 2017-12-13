@@ -19,5 +19,12 @@ jobs:
           name: Lint
           command: npm run lint
       - run:
-          name: Run tests
+          name: Run unit tests
           command: npm test
+      - setup_remote_docker
+      - run:
+          name: Build test container
+          command: docker build -t slstest tests/e2e/service/container
+      - run:
+          name: Run integration tests
+          command: npm run integration

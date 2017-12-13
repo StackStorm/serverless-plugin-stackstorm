@@ -29,15 +29,24 @@ class StackstormPlugin {
       'stackstorm:package': () => this.serverless.pluginManager.spawn('package'),
       'stackstorm:clean:clean': () => this.clean(),
       'stackstorm:docker:pull:pull': () => this.pullDockerImage(),
-      'stackstorm:docker:start:start': () => this.startDocker(),
+      'stackstorm:docker:start:start': () => {
+        const { noPull } = this.options;
+        return this.startDocker({ noPull });
+      },
       'stackstorm:docker:stop:stop': () => this.stopDocker(this.options.dockerId),
-      'stackstorm:docker:exec:exec': () => this.execDocker(this.options.cmd.split(' ')),
+      'stackstorm:docker:exec:exec': () => {
+        const { noPull } = this.options;
+        return this.execDocker(this.options.cmd.split(' '), { noPull });
+      },
       'stackstorm:docker:run:run': () => {
         const { 'function': func, data, ...rest } = this.options;
         return this.runDocker(func, data, rest);
       },
       'stackstorm:install:adapter:copyAdapter': () => this.copyAdapter(),
-      'stackstorm:install:deps:copyDeps': () => this.copyDeps(),
+      'stackstorm:install:deps:copyDeps': () => {
+        const { noPull } = this.options;
+        return this.copyDeps({ noPull });
+      },
       'stackstorm:install:packs:clonePacks': () => {
         if (this.options.pack) {
           return this.clonePack(this.options.pack);
@@ -46,11 +55,13 @@ class StackstormPlugin {
         return this.clonePacks();
       },
       'stackstorm:install:packDeps:copyPackDeps': () => {
-        if (this.options.pack) {
-          return this.copyPackDeps(this.options.pack);
+        const { pack, noPull } = this.options;
+
+        if (pack) {
+          return this.copyPackDeps(pack, { noPull });
         }
 
-        return this.copyAllPacksDeps({ force: true });
+        return this.copyAllPacksDeps({ force: true, noPull });
       },
       'stackstorm:info:info': () => this.showActionInfo(this.options.action),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
@@ -160,8 +171,10 @@ class StackstormPlugin {
                 ],
                 options: {
                   dockerId: {
-                    usage: 'λ docker container ID',
-                    required: true
+                    usage: 'λ docker container ID'
+                  },
+                  noPull: {
+                    usage: 'Do not pull the docker image'
                   }
                 }
               },
@@ -184,8 +197,10 @@ class StackstormPlugin {
                 ],
                 options: {
                   dockerId: {
-                    usage: 'λ docker container ID',
-                    required: true
+                    usage: 'λ docker container ID'
+                  },
+                  noPull: {
+                    usage: 'Do not pull the docker image'
                   },
                   pack: {
                     usage: 'Install dependencies for specific pack.',
@@ -246,32 +261,33 @@ class StackstormPlugin {
     await fs.copy(__dirname + '/stackstorm', MAGIC_FOLDER);
   }
 
-  async copyDeps() {
+  async copyDeps({ noPull } = {}) {
     this.serverless.cli.log('Installing StackStorm adapter dependencies...');
     const prefix = `${INTERNAL_MAGIC_FOLDER}/deps`;
-    await this.execDocker(['pip', 'install', '-I', this.st2common_pkg, this.python_runner_pkg, '--prefix', prefix]);
+    await this.execDocker(['mkdir', '-p', prefix], { noPull });
+    await this.execDocker(['pip', 'install', '-I', this.st2common_pkg, this.python_runner_pkg, '--prefix', prefix], { noPull });
   }
 
-  async copyPackDeps(pack) {
+  async copyPackDeps(pack, { noPull } = {}) {
     const prefix = `${INTERNAL_MAGIC_FOLDER}/virtualenvs/${pack}`;
     const pythonpath = `${prefix}/lib/python2.7/site-packages`;
     const requirements = `${INTERNAL_MAGIC_FOLDER}/packs/${pack}/requirements.txt`;
-    await this.execDocker(['mkdir', '-p', pythonpath]);
+    await this.execDocker(['mkdir', '-p', pythonpath], { noPull });
     await this.execDocker([
       '/bin/bash', '-c',
       `PYTHONPATH=$PYTHONPATH:${pythonpath} ` +
       `pip --isolated install -r ${requirements} --prefix ${prefix} --src ${prefix}/src`
-    ]);
+    ], { noPull });
   }
 
-  async copyAllPacksDeps({ force } = {}) {
+  async copyAllPacksDeps({ force, noPull } = {}) {
     this.serverless.cli.log('Ensuring virtual environments for packs...');
     const packs = fs.readdirSync(`${MAGIC_FOLDER}/packs`);
 
     for (let pack of packs) {
       const depsExists = await fs.pathExists(`${MAGIC_FOLDER}/virtualenvs/${pack}`);
       if (force || !depsExists) {
-        await this.copyPackDeps(pack);
+        await this.copyPackDeps(pack, { noPull });
       }
     }
   }
@@ -320,16 +336,28 @@ class StackstormPlugin {
   }
 
   async pullDockerImage() {
-    return await pullDockerImage(this.dockerBuildImage);
+    const promise = pullDockerImage(this.dockerBuildImage);
+
+    promise.on('stdout', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+    promise.on('stderr', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+
+    return await promise;
   }
 
-  async startDocker() {
+  async startDocker({ noPull } = {}) {
     if (!this.dockerId) {
-      await this.pullDockerImage();
+      if (!noPull) {
+        await this.pullDockerImage();
+      }
 
       this.serverless.cli.log('Spinning Docker container to build python dependencies...');
       const volume = `${path.resolve('./')}/${MAGIC_FOLDER}:${INTERNAL_MAGIC_FOLDER}`;
-      this.dockerId = await startDocker(this.dockerBuildImage, volume);
+      const promise = startDocker(this.dockerBuildImage, volume);
+
+      promise.on('stdout', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+      promise.on('stderr', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+
+      this.dockerId = await promise;
       return this.dockerId;
     }
 
@@ -338,20 +366,30 @@ class StackstormPlugin {
 
   async stopDocker(dockerId = this.dockerId) {
     if (dockerId) {
+      const promise = stopDocker(dockerId);
       this.serverless.cli.log('Stopping Docker container...');
-      return await stopDocker(dockerId);
+
+      promise.on('stdout', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+      promise.on('stderr', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+
+      return await promise;
     }
 
     throw new this.serverless.classes.Error('No Docker container is set for this session. You need to start one first.');
   }
 
-  async execDocker(cmd) {
+  async execDocker(cmd, { noPull } = {}) {
     let dockerId = this.dockerId || this.options.dockerId;
     if (!dockerId) {
-      dockerId = await this.startDocker();
+      this.dockerId = dockerId = await this.startDocker({ noPull });
     }
 
-    return await execDocker(dockerId, cmd);
+    const promise = execDocker(dockerId, cmd);
+
+    promise.on('stdout', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+    promise.on('stderr', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+
+    return await promise;
   }
 
   async runDocker(funcName, data, opts={}) {
@@ -385,7 +423,13 @@ class StackstormPlugin {
     const cmd = [`${MAGIC_FOLDER}/handler.${opts.passthrough ? 'passthrough' : 'basic'}`, data];
 
     this.serverless.cli.log('Spinning Docker container to run a function locally...');
-    const { result } = await runDocker(this.dockerRunImage, volumes, envs, cmd)
+
+    const promise = runDocker(this.dockerRunImage, volumes, envs, cmd);
+
+    promise.on('stdout', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+    promise.on('stderr', (str) => this.serverless.cli.consoleLog(chalk.dim(str)));
+
+    const { result } = await promise
       .catch(e => {
         if (e.result && e.result.errorMessage) {
           throw new Error(`Function error: ${e.result.errorMessage}`);
@@ -419,10 +463,10 @@ class StackstormPlugin {
     const actionName = actionNameRest.join('.');
 
     const metaUrl = urljoin(this.index_root, 'packs', packName, 'actions', `${actionName}.json`);
-    const packRequest = request.get(metaUrl).then(res => res.data);
+    const packRequest = () => request.get(metaUrl).then(res => res.data);
 
     const configUrl = urljoin(this.index_root, 'packs', packName, 'config.schema.json');
-    const configRequest = request.get(configUrl).then(res => res.data);
+    const configRequest = () => request.get(configUrl).then(res => res.data);
 
     const dots = 30;
     const indent = '  ';
@@ -430,7 +474,7 @@ class StackstormPlugin {
     const msg = [];
 
     try {
-      const packMeta = await packRequest;
+      const packMeta = await packRequest();
       const usage = packMeta.description || chalk.dim('action description is missing');
 
       msg.push(`${chalk.yellow(action)} ${chalk.dim(_.repeat('.', dots - action.length))} ${usage}`);
@@ -447,7 +491,7 @@ class StackstormPlugin {
     }
 
     try {
-      const configMeta = await configRequest;
+      const configMeta = await configRequest();
       msg.push(`${chalk.yellow.underline('Config')}`);
       for (let name in configMeta) {
         const param = configMeta[name];

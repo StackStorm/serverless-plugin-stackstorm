@@ -1,0 +1,19 @@
+name: test
+description: st2 pack to test package management pipeline
+keywords:
+- some
+- search
+- terms
+version: 0.4.0
+author: st2-dev
+email: info@stackstorm.com
+content:
+  actions:
+    count: 2
+    resources:
+    - list_vms
+    - parse
+  tests:
+    count: 1
+    resources:
+    - test_action_parse_xml.py

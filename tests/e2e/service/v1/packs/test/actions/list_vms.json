@@ -1,0 +1,14 @@
+{
+    "description": "List available VMs.",
+    "enabled": true,
+    "entry_point": "list_vms.py",
+    "name": "list_vms",
+    "parameters": {
+        "credentials": {
+            "description": "Name of the credentials set (as defined in the config) to use.",
+            "required": true,
+            "type": "string"
+        }
+    },
+    "runner_type": "python-script"
+}
