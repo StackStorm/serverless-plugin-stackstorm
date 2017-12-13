@@ -21,6 +21,7 @@ from st2common.runners.base import ActionRunner
 from st2common.util.pack import validate_config_against_schema
 from st2common.util import param as param_utils
 
+import config  # noqa
 
 del sys.argv[1:]
 
@@ -86,12 +87,16 @@ ACTIONS = _load_actions()
 CONFIG_SCHEMAS = _load_config_schemas()
 
 
-def base(event, context, passthrough=False):
+def base(event, context, passthrough=False, debug=False):
     # Set up logging
     # TODO: Allow log level to be specified by the user, default to DEBUG when
     # --verbose is used
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     try:
         if isinstance(event, basestring):
