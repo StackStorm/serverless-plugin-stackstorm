@@ -29,11 +29,12 @@ import st2common.validators.api.action as action_validator
 
 import config
 
-LOG = logging.getLogger(__name__)
 
 del sys.argv[1:]
 
 cfg.CONF(args=('--config-file', '~st2/st2.conf'), version=VERSION_STRING)
+
+LOG = logging.getLogger(__name__)
 
 
 class PassthroughRunner(ActionRunner):
@@ -94,6 +95,22 @@ CONFIG_SCHEMAS = _load_config_schemas()
 
 
 def base(event, context, passthrough=False):
+    try:
+        if isinstance(event, basestring):
+            event = json.loads(event)
+        print("Received event: " + json.dumps(event, indent=2))
+        # TODO(dzimine): figure how to configure console logger
+        # LOG.info("Received event: " + json.dumps(event, indent=2))
+    except ValueError as e:
+        print "ERROR: Can not parse `event`: '{}'\n{}".format(str(event), str(e))
+        raise
+
+    if isinstance(event.get('body'), basestring):
+        try:
+            event['body'] = json.loads(event['body'])
+        except:
+            LOG.warn('`event` has `body` which is not JSON')
+
     action_name = os.environ['ST2_ACTION']
     try:
         action_db = ACTIONS[action_name]
@@ -166,7 +183,7 @@ def base(event, context, passthrough=False):
     (status, output, context) = runner.run(action_params)
 
     output_values = os.environ.get('ST2_OUTPUT', None)
-    if param_values:
+    if output_values:
         try:
             result = param_utils.render_live_params(
                 runner_parameters=runnertype_db.runner_parameters,
