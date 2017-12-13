@@ -279,7 +279,7 @@ class StackstormPlugin {
   async clonePack(packName) {
     const index = await this.getIndex();
     const packMeta = index.packs[packName];
-    const debug = (process.env['DEBUG'] !== undefined)
+    const debug = (process.env['DEBUG'] !== undefined);
 
     const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
     try {
@@ -288,8 +288,8 @@ class StackstormPlugin {
       this.serverless.cli.log(`Cloning pack "${packMeta.ref || packMeta.name}"...`);
       await git().silent(silent).clone(packMeta.repo_url, localPath);
     } catch (e) {
-      await git(localPath).fetch()
-      await git(localPath).pull('origin', 'master')
+      await git(localPath).fetch();
+      await git(localPath).pull('origin', 'master');
     }
 
     return localPath;
@@ -350,8 +350,12 @@ class StackstormPlugin {
   async execDocker(cmd) {
     let dockerId = this.dockerId || this.options.dockerId;
     if (!dockerId) {
+      console.log('startiong docker')
       dockerId = await this.startDocker();
     }
+
+    console.log('started')
+    console.log(cmd)
 
     return await execDocker(dockerId, cmd);
   }
