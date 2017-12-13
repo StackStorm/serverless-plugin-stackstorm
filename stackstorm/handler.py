@@ -20,9 +20,11 @@ import sys
 import json
 import uuid
 import logging
+
 import six
 from oslo_config import cfg
 from stevedore.driver import DriverManager
+from six.moves.urllib.parse import parse_qsl
 
 from st2common.bootstrap.actionsregistrar import ActionsRegistrar
 from st2common.constants.action import LIVEACTION_STATUS_SUCCEEDED
@@ -127,12 +129,19 @@ def base(event, context, passthrough=False, debug=False):
     # Special case for Lambda function being called over HTTP via API gateway
     # See https://serverless.com/framework/docs/providers/aws/events/apigateway#example-lambda-proxy-event-default
     # for details
+    is_event_body_string = (isinstance(event.get('body'), basestring) is True)
     content_type = event.get('headers', {}).get('Content-Type', '').lower()
-    if isinstance(event.get('body'), basestring) and content_type == 'application/json':
-        try:
-            event['body'] = json.loads(event['body'])
-        except Exception:
-            LOG.warn('`event` has `body` which is not JSON')
+
+    if is_event_body_string:
+        if content_type == 'application/json':
+            try:
+                event['body'] = json.loads(event['body'])
+            except Exception:
+                LOG.warn('`event` has `body` which is not JSON')
+        elif content_type == 'application/x-www-form-urlencoded':
+            event['body'] = dict(parse_qsl(['body'], keep_blank_values=True))
+        else:
+            LOG.warn('Unsupported event content type: %s' % (content_type))
 
     action_name = os.environ['ST2_ACTION']
     try:
