@@ -350,12 +350,8 @@ class StackstormPlugin {
   async execDocker(cmd) {
     let dockerId = this.dockerId || this.options.dockerId;
     if (!dockerId) {
-      console.log('startiong docker')
       dockerId = await this.startDocker();
     }
-
-    console.log('started')
-    console.log(cmd)
 
     return await execDocker(dockerId, cmd);
   }
