@@ -19,7 +19,7 @@ functions:
 #        Optional: use token for private repos or actions requiring authorization
 #        token: ${env:GITHUB_TOKEN}
 
-    envoronment:
+    environment:
       ${file(env.yml):github}
 
     events:
