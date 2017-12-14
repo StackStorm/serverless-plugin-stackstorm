@@ -230,8 +230,13 @@ describe('index', () => {
     it('should clone StackStorm pack if it doesn\'t exist yet', async () => {
       const cloneStub = sinon.stub().resolves();
       const StackStorm = mock('./index.js', {
-        'nodegit': {
-          Clone: cloneStub
+        'simple-git/promise': () => {
+          const self = {
+            silent: () => self,
+            clone: cloneStub
+          };
+
+          return self;
         }
       });
 
@@ -252,16 +257,15 @@ describe('index', () => {
 
     it('should pull the latest master for StackStorm pack if it exists already', async () => {
       const fetchStub = sinon.stub().resolves();
-      const mergeStub = sinon.stub().resolves();
-      const openStub = sinon.stub().resolves({
-        fetchAll: fetchStub,
-        mergeBranches: mergeStub
-      });
+      const pullStub = sinon.stub().resolves();
       const StackStorm = mock('./index.js', {
-        'nodegit': {
-          Repository: {
-            open: openStub
-          }
+        'simple-git/promise': () => {
+          const self = {
+            fetch: fetchStub,
+            pull: pullStub
+          };
+
+          return self;
         }
       });
 
@@ -276,12 +280,10 @@ describe('index', () => {
       });
 
       await expect(instance.clonePack('some')).to.eventually.be.fulfilled;
-      expect(openStub).to.be.calledOnce;
-      expect(openStub).to.be.calledWith('~st2/packs/some');
       expect(fetchStub).to.be.calledOnce;
       expect(fetchStub).to.be.calledWith();
-      expect(mergeStub).to.be.calledOnce;
-      expect(mergeStub).to.be.calledWith('master', 'origin/master');
+      expect(pullStub).to.be.calledOnce;
+      expect(pullStub).to.be.calledWith('origin', 'master');
     });
   });
 
@@ -697,6 +699,76 @@ describe('index', () => {
         '  \u001b[33mappliance [string] (required)\u001b[39m  The appliance information to connect, which is specified at the "appliance" parameter in the configuration.',
         '\u001b[33m\u001b[4mConfig\u001b[24m\u001b[39m',
         '  \u001b[33mappliance [array] \u001b[39m \u001b[2m..........\u001b[22m Appliance parameters to connect'
+      ].join('\n'));
+    });
+  });
+
+  describe('#showPackInfo', () => {
+    it('should display pack help', async () => {
+      const getStub = sinon.stub();
+
+      getStub
+        .withArgs('https://index.stackstorm.org/v1/index.json')
+        .resolves({
+          'data': {
+            'metadata': {
+              'generated_ts': 1512633599,
+              'hash': '72c7655b059b387f074ea0a868b54a2f'
+            },
+            'packs': {
+              'test': {
+                'author': 'st2-dev',
+                'content': {
+                  'actions': {
+                    'count': 2,
+                    'resources': [
+                      'list_vms',
+                      'parse'
+                    ]
+                  },
+                  'tests': {
+                    'count': 1,
+                    'resources': [
+                      'test_action_parse_xml.py'
+                    ]
+                  }
+                },
+                'description': 'st2 pack to test package management pipeline',
+                'email': 'info@stackstorm.com',
+                'keywords': [
+                  'some',
+                  'search',
+                  'terms'
+                ],
+                'name': 'test',
+                'repo_url': 'https://github.com/StackStorm-Exchange/stackstorm-test',
+                'version': '0.4.0'
+              }
+            }
+          }
+        });
+
+      const StackStorm = mock('./index.js', {
+        'axios': {
+          get: getStub
+        }
+      });
+
+      const serverless = {
+        ...sls,
+        cli: {
+          consoleLog: sinon.spy()
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+
+      await expect(instance.showPackInfo('test')).to.eventually.be.fulfilled;
+      expect(serverless.cli.consoleLog).to.be.calledWith([
+        '\u001b[33mtest\u001b[39m \u001b[2m..........................\u001b[22m st2 pack to test package management pipeline',
+        '\u001b[33m\u001b[4mActions\u001b[24m\u001b[39m',
+        '  list_vms',
+        '  parse'
       ].join('\n'));
     });
   });

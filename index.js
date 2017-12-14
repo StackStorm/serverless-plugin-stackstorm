@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
-const git = require('nodegit');
+const git = require('simple-git/promise');
 const yaml = require('js-yaml');
 const nopy = require('nopy');
 const request = require('axios');
@@ -63,7 +63,7 @@ class StackstormPlugin {
 
         return this.copyAllPacksDeps({ force: true, noPull });
       },
-      'stackstorm:info:info': () => this.showActionInfo(this.options.action),
+      'stackstorm:info:info': () => this.showInfo(this.options),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
       'before:simulate:apigateway:initialize': () => this.beforeCreateDeploymentArtifacts(),
       'before:invoke:local:invoke': () => this.beforeCreateDeploymentArtifacts(true)
@@ -217,8 +217,10 @@ class StackstormPlugin {
             ],
             options: {
               action: {
-                usage: 'Action name',
-                required: true
+                usage: 'Action name'
+              },
+              pack: {
+                usage: 'Pack name'
               }
             }
           }
@@ -295,15 +297,17 @@ class StackstormPlugin {
   async clonePack(packName) {
     const index = await this.getIndex();
     const packMeta = index.packs[packName];
+    const debug = (process.env['DEBUG'] !== undefined);
 
     const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
     try {
+      const silent = !debug;
+
       this.serverless.cli.log(`Cloning pack "${packMeta.ref || packMeta.name}"...`);
-      await git.Clone(packMeta.repo_url, localPath);
+      await git().silent(silent).clone(packMeta.repo_url, localPath);
     } catch (e) {
-      const repo = await git.Repository.open(localPath);
-      await repo.fetchAll();
-      await repo.mergeBranches('master', 'origin/master');
+      await git(localPath).fetch();
+      await git(localPath).pull('origin', 'master');
     }
 
     return localPath;
@@ -458,6 +462,16 @@ class StackstormPlugin {
     return result.result;
   }
 
+  showInfo({ action, pack }) {
+    if (action) {
+      return this.showActionInfo(action);
+    } else if (pack) {
+      return this.showPackInfo(pack);
+    } else {
+      throw new Error('Either action or pack should be provided');
+    }
+  }
+
   async showActionInfo(action) {
     const [ packName, ...actionNameRest ] = action.split('.');
     const actionName = actionNameRest.join('.');
@@ -502,6 +516,31 @@ class StackstormPlugin {
       }
     } catch (e) {
       msg.push(chalk.dim('The action does not require config parameters'));
+    }
+
+    this.serverless.cli.consoleLog(msg.join('\n'));
+  }
+
+  async showPackInfo(packName) {
+    const indexUrl = urljoin(this.index_root, 'index.json');
+    const index = await request.get(indexUrl).then(res => res.data);
+
+    const dots = 30;
+    const indent = '  ';
+
+    const msg = [];
+
+    const pack = index.packs[packName];
+    if (!pack) {
+      throw new Error(`No such pack in the index: ${packName}`);
+    }
+    const usage = pack.description || chalk.dim('pack description is missing');
+    const { actions={} } = pack.content;
+
+    msg.push(`${chalk.yellow(packName)} ${chalk.dim(_.repeat('.', dots - packName.length))} ${usage}`);
+    msg.push(`${chalk.yellow.underline('Actions')}`);
+    for (let name of actions.resources) {
+      msg.push(`${indent}${name}`);
     }
 
     this.serverless.cli.consoleLog(msg.join('\n'));
