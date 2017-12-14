@@ -52,7 +52,7 @@ class StackstormPlugin {
 
         return this.copyAllPacksDeps({ force: true });
       },
-      'stackstorm:info:info': () => this.showActionInfo(this.options.action),
+      'stackstorm:info:info': () => this.showInfo(this.options),
       'before:package:createDeploymentArtifacts': () => this.beforeCreateDeploymentArtifacts(),
       'before:simulate:apigateway:initialize': () => this.beforeCreateDeploymentArtifacts(),
       'before:invoke:local:invoke': () => this.beforeCreateDeploymentArtifacts(true)
@@ -202,8 +202,10 @@ class StackstormPlugin {
             ],
             options: {
               action: {
-                usage: 'Action name',
-                required: true
+                usage: 'Action name'
+              },
+              pack: {
+                usage: 'Pack name'
               }
             }
           }
@@ -416,6 +418,16 @@ class StackstormPlugin {
     return result.result;
   }
 
+  showInfo({ action, pack }) {
+    if (action) {
+      return this.showActionInfo(action);
+    } else if (pack) {
+      return this.showPackInfo(pack);
+    } else {
+      throw new Error('Either action or pack should be provided');
+    }
+  }
+
   async showActionInfo(action) {
     const [ packName, ...actionNameRest ] = action.split('.');
     const actionName = actionNameRest.join('.');
@@ -460,6 +472,31 @@ class StackstormPlugin {
       }
     } catch (e) {
       msg.push(chalk.dim('The action does not require config parameters'));
+    }
+
+    this.serverless.cli.consoleLog(msg.join('\n'));
+  }
+
+  async showPackInfo(packName) {
+    const indexUrl = urljoin(this.index_root, 'index.json');
+    const index = await request.get(indexUrl).then(res => res.data);
+
+    const dots = 30;
+    const indent = '  ';
+
+    const msg = [];
+
+    const pack = index.packs[packName];
+    if (!pack) {
+      throw new Error(`No such pack in the index: ${packName}`);
+    }
+    const usage = pack.description || chalk.dim('pack description is missing');
+    const { actions={} } = pack.content;
+
+    msg.push(`${chalk.yellow(packName)} ${chalk.dim(_.repeat('.', dots - packName.length))} ${usage}`);
+    msg.push(`${chalk.yellow.underline('Actions')}`);
+    for (let name of actions.resources) {
+      msg.push(`${indent}${name}`);
     }
 
     this.serverless.cli.consoleLog(msg.join('\n'));

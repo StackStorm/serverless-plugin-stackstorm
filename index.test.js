@@ -695,4 +695,74 @@ describe('index', () => {
       ].join('\n'));
     });
   });
+
+  describe('#showPackInfo', () => {
+    it('should display pack help', async () => {
+      const getStub = sinon.stub();
+
+      getStub
+        .withArgs('https://index.stackstorm.org/v1/index.json')
+        .resolves({
+          'data': {
+            'metadata': {
+              'generated_ts': 1512633599,
+              'hash': '72c7655b059b387f074ea0a868b54a2f'
+            },
+            'packs': {
+              'test': {
+                'author': 'st2-dev',
+                'content': {
+                  'actions': {
+                    'count': 2,
+                    'resources': [
+                      'list_vms',
+                      'parse'
+                    ]
+                  },
+                  'tests': {
+                    'count': 1,
+                    'resources': [
+                      'test_action_parse_xml.py'
+                    ]
+                  }
+                },
+                'description': 'st2 pack to test package management pipeline',
+                'email': 'info@stackstorm.com',
+                'keywords': [
+                  'some',
+                  'search',
+                  'terms'
+                ],
+                'name': 'test',
+                'repo_url': 'https://github.com/StackStorm-Exchange/stackstorm-test',
+                'version': '0.4.0'
+              }
+            }
+          }
+        });
+
+      const StackStorm = mock('./index.js', {
+        'axios': {
+          get: getStub
+        }
+      });
+
+      const serverless = {
+        ...sls,
+        cli: {
+          consoleLog: sinon.spy()
+        }
+      };
+
+      const instance = new StackStorm(serverless, opts);
+
+      await expect(instance.showPackInfo('test')).to.eventually.be.fulfilled;
+      expect(serverless.cli.consoleLog).to.be.calledWith([
+        '\u001b[33mtest\u001b[39m \u001b[2m..........................\u001b[22m st2 pack to test package management pipeline',
+        '\u001b[33m\u001b[4mActions\u001b[24m\u001b[39m',
+        '  list_vms',
+        '  parse'
+      ].join('\n'));
+    });
+  });
 });
