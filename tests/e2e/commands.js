@@ -148,7 +148,11 @@ describe('StackStorm Serverless Plugin E2E', () => {
   });
 
   afterEach(() => {
-    tmpdir.removeCallback();
+    try {
+      tmpdir.removeCallback();
+    } catch (e) {
+      // YOLO
+    }
   });
 
   after(async function () {
