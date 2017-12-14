@@ -93,6 +93,7 @@ describe('StackStorm Serverless Plugin E2E', () => {
       expect(fs.readdirSync('~st2')).to.have.members([
         '__init__.py',
         'config.py',
+        'console.conf',
         'handler.py',
         'st2.conf'
       ]);

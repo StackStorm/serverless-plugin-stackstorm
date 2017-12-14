@@ -23,12 +23,6 @@ jobs:
             # Each step uses the same `$BASH_ENV`, so need to modify it
             echo 'export NVM_DIR="/opt/circleci/.nvm"' >> $BASH_ENV
             echo "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"" >> $BASH_ENV
-      - run:
-          name: Install libstdc++
-          command: |
-            sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-            sudo apt-get update
-            sudo apt-get install libstdc++-4.9-dev
       - restore_cache:
           key: dependency-cache-{{ checksum "package.json" }}
       - run:
