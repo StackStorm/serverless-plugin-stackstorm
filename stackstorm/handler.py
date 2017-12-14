@@ -106,7 +106,7 @@ ACTIONS = _load_actions()
 CONFIG_SCHEMAS = _load_config_schemas()
 
 
-def base(event, context, passthrough=False, debug=False):
+def base(event, context, passthrough=False):
     # Set up logging
     logger = logging.getLogger()
 
