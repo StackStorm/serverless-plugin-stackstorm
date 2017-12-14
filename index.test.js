@@ -223,8 +223,13 @@ describe('index', () => {
     it('should clone StackStorm pack if it doesn\'t exist yet', async () => {
       const cloneStub = sinon.stub().resolves();
       const StackStorm = mock('./index.js', {
-        'nodegit': {
-          Clone: cloneStub
+        'simple-git/promise': () => {
+          const self = {
+            silent: () => self,
+            clone: cloneStub
+          };
+
+          return self;
         }
       });
 
@@ -245,16 +250,15 @@ describe('index', () => {
 
     it('should pull the latest master for StackStorm pack if it exists already', async () => {
       const fetchStub = sinon.stub().resolves();
-      const mergeStub = sinon.stub().resolves();
-      const openStub = sinon.stub().resolves({
-        fetchAll: fetchStub,
-        mergeBranches: mergeStub
-      });
+      const pullStub = sinon.stub().resolves();
       const StackStorm = mock('./index.js', {
-        'nodegit': {
-          Repository: {
-            open: openStub
-          }
+        'simple-git/promise': () => {
+          const self = {
+            fetch: fetchStub,
+            pull: pullStub
+          };
+
+          return self;
         }
       });
 
@@ -269,12 +273,10 @@ describe('index', () => {
       });
 
       await expect(instance.clonePack('some')).to.eventually.be.fulfilled;
-      expect(openStub).to.be.calledOnce;
-      expect(openStub).to.be.calledWith('~st2/packs/some');
       expect(fetchStub).to.be.calledOnce;
       expect(fetchStub).to.be.calledWith();
-      expect(mergeStub).to.be.calledOnce;
-      expect(mergeStub).to.be.calledWith('master', 'origin/master');
+      expect(pullStub).to.be.calledOnce;
+      expect(pullStub).to.be.calledWith('origin', 'master');
     });
   });
 

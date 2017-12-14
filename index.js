@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
-const git = require('nodegit');
+const git = require('simple-git/promise');
 const yaml = require('js-yaml');
 const nopy = require('nopy');
 const request = require('axios');
@@ -281,15 +281,17 @@ class StackstormPlugin {
   async clonePack(packName) {
     const index = await this.getIndex();
     const packMeta = index.packs[packName];
+    const debug = (process.env['DEBUG'] !== undefined);
 
     const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
     try {
+      const silent = !debug;
+
       this.serverless.cli.log(`Cloning pack "${packMeta.ref || packMeta.name}"...`);
-      await git.Clone(packMeta.repo_url, localPath);
+      await git().silent(silent).clone(packMeta.repo_url, localPath);
     } catch (e) {
-      const repo = await git.Repository.open(localPath);
-      await repo.fetchAll();
-      await repo.mergeBranches('master', 'origin/master');
+      await git(localPath).fetch();
+      await git(localPath).pull('origin', 'master');
     }
 
     return localPath;
