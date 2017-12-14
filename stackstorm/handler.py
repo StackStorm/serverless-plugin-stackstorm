@@ -1,39 +1,52 @@
+# -*- coding: utf-8 -*-
+# Licensed to the StackStorm, Inc ('StackStorm') under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# pylint: disable=import-error
 import os
 import sys
 import json
-import yaml
 import uuid
 import logging
+
 import six
 from oslo_config import cfg
 from stevedore.driver import DriverManager
+from six.moves.urllib.parse import parse_qsl
 
 from st2common.bootstrap.actionsregistrar import ActionsRegistrar
 from st2common.constants.action import LIVEACTION_STATUS_SUCCEEDED
 from st2common.constants.pack import CONFIG_SCHEMA_FILE_NAME
-from st2common.constants.runners import MANIFEST_FILE_NAME
 from st2common.constants.system import VERSION_STRING
-from st2common.content.loader import ContentPackLoader, RunnersLoader, MetaLoader
+from st2common.content.loader import ContentPackLoader, MetaLoader
 from st2common.content import utils as content_utils
 from st2common.exceptions import actionrunner
 from st2common.exceptions.param import ParamException
 from st2common.models.api.action import ActionAPI, RunnerTypeAPI
 from st2common.models.api.pack import ConfigSchemaAPI
-from st2common.models.db.action import ActionDB
-from st2common.models.db.runner import RunnerTypeDB
 from st2common.runners.base import ActionRunner
-from st2common.runners.base import get_runner
 from st2common.util.pack import validate_config_against_schema
 from st2common.util import param as param_utils
-import st2common.validators.api.action as action_validator
 
-import config
-
-LOG = logging.getLogger(__name__)
+import config  # noqa
 
 del sys.argv[1:]
 
 cfg.CONF(args=('--config-file', '~st2/st2.conf'), version=VERSION_STRING)
+
+LOG = logging.getLogger(__name__)
 
 
 class PassthroughRunner(ActionRunner):
@@ -93,7 +106,45 @@ ACTIONS = _load_actions()
 CONFIG_SCHEMAS = _load_config_schemas()
 
 
-def base(event, context, passthrough=False):
+def base(event, context, passthrough=False, debug=False):
+    # Set up logging
+    # TODO: Allow log level to be specified by the user, default to DEBUG when
+    # --verbose is used
+    logger = logging.getLogger()
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    if isinstance(event, basestring):
+        try:
+            event = json.loads(event)
+        except ValueError as e:
+            LOG.error("ERROR: Can not parse `event`: '{}'\n{}".format(str(event), str(e)))
+            raise e
+
+    LOG.info("Received event: " + json.dumps(event, indent=2))
+
+    # Special case for Lambda function being called over HTTP via API gateway
+    # See
+    # https://serverless.com/framework/docs/providers/aws/events/apigateway
+    # #example-lambda-proxy-event-default
+    # for details
+    is_event_body_string = (isinstance(event.get('body'), basestring) is True)
+    content_type = event.get('headers', {}).get('Content-Type', '').lower()
+
+    if is_event_body_string:
+        if content_type == 'application/json':
+            try:
+                event['body'] = json.loads(event['body'])
+            except Exception:
+                LOG.warn('`event` has `body` which is not JSON')
+        elif content_type == 'application/x-www-form-urlencoded':
+            event['body'] = dict(parse_qsl(['body'], keep_blank_values=True))
+        else:
+            LOG.warn('Unsupported event content type: %s' % (content_type))
+
     action_name = os.environ['ST2_ACTION']
     try:
         action_db = ACTIONS[action_name]
@@ -119,14 +170,14 @@ def base(event, context, passthrough=False):
     # runner.execution_id = str(runner.execution.id)
     runner.entry_point = content_utils.get_entry_point_abs_path(pack=action_db.pack,
         entry_point=action_db.entry_point)
-    runner.context = {} # getattr(liveaction_db, 'context', dict())
+    runner.context = {}  # getattr(liveaction_db, 'context', dict())
     # runner.callback = getattr(liveaction_db, 'callback', dict())
     runner.libs_dir_path = content_utils.get_action_libs_abs_path(pack=action_db.pack,
         entry_point=action_db.entry_point)
 
     # For re-run, get the ActionExecutionDB in which the re-run is based on.
-    rerun_ref_id = runner.context.get('re-run', {}).get('ref')
-    runner.rerun_ex_ref = ActionExecution.get(id=rerun_ref_id) if rerun_ref_id else None
+    # rerun_ref_id = runner.context.get('re-run', {}).get('ref')
+    # runner.rerun_ex_ref = ActionExecution.get(id=rerun_ref_id) if rerun_ref_id else None
 
     config_schema = CONFIG_SCHEMAS.get(action_db.pack, None)
     config_values = os.environ.get('ST2_CONFIG', None)
@@ -166,7 +217,7 @@ def base(event, context, passthrough=False):
     (status, output, context) = runner.run(action_params)
 
     output_values = os.environ.get('ST2_OUTPUT', None)
-    if param_values:
+    if output_values:
         try:
             result = param_utils.render_live_params(
                 runner_parameters=runnertype_db.runner_parameters,
@@ -182,6 +233,16 @@ def base(event, context, passthrough=False):
     else:
         result = output
 
+    # Log the logs generated by the action. We do that so the actual action logs
+    # (action stderr) end up in CloudWatch
+    output = output or {}
+
+    if output.get('stdout', None):
+        LOG.info('Action stdout: %s' % (output['stdout']))
+
+    if output.get('stderr', None):
+        LOG.info('Action stderr and logs: %s' % (output['stderr']))
+
     return {
         'event': event,
         'live_params': live_params,
@@ -189,14 +250,17 @@ def base(event, context, passthrough=False):
         'result': result
     }
 
+
 # for backwards compatibility
 def stackstorm(*args, **kwargs):
     res = base(*args, **kwargs)
     return res['result']
 
+
 def basic(*args, **kwargs):
     res = base(*args, **kwargs)
     return res
+
 
 def passthrough(*args, **kwargs):
     res = base(*args, passthrough=True, **kwargs)

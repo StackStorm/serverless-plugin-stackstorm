@@ -1,6 +1,14 @@
-version: 2
-jobs:
+version: 2.0
+
+workflows:
+  version: 2
   build:
+    jobs:
+      - "javascript"
+      - "python"
+
+jobs:
+  javascript:
     working_directory: ~/serverless-plugin-stackstorm
     docker:
       - image: circleci/node:8.4.0
@@ -21,3 +29,22 @@ jobs:
       - run:
           name: Run tests
           command: npm test
+
+  python:
+    working_directory: ~/serverless-plugin-stackstorm
+    docker:
+      - image: circleci/python:2.7
+    steps:
+      - checkout
+      - run:
+          name: Install Python test dependencies
+          command: |
+            virtualenv venv
+            . venv/bin/activate
+            pip install -r requirements-test.txt
+      - run:
+          name: Python Lint (flake8)
+          command: venv/bin/flake8 --config ./lint-configs/python/.flake8 stackstorm/handler.py
+      - run:
+          name: Python Lint (pylint)
+          command: venv/bin/pylint -E --rcfile=./lint-configs/python/.pylintrc stackstorm/handler.py

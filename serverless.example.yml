@@ -16,7 +16,8 @@ functions:
         statusCode: 200
         body: "{{ output.result.body }}"
       config:
-        token: ${env:GITHUB_TOKEN}
+#        Optional: use token for private repos or actions requiring authorization
+#        token: ${env:GITHUB_TOKEN}
 
     envoronment:
       ${file(env.yml):github}
