@@ -12,6 +12,12 @@ const expect = chai.expect;
 
 const StackStorm = require('./index.js');
 
+function makePromiseStub(value) {
+  const promise = Promise.resolve(value);
+  promise.on = () => {};
+  return sinon.stub().returns(promise);
+}
+
 class CustomError extends Error {}
 
 describe('index', () => {
@@ -121,7 +127,7 @@ describe('index', () => {
 
   describe('#copyDeps', () => {
     it('should install StackStorm deps', async () => {
-      const execStub = sinon.stub().resolves();
+      const execStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           execDocker: execStub
@@ -132,7 +138,8 @@ describe('index', () => {
       instance.dockerId = 'some';
 
       await expect(instance.copyDeps()).to.eventually.be.fulfilled;
-      expect(execStub).to.be.calledOnce;
+      expect(execStub).to.be.calledTwice;
+      expect(execStub).to.be.calledWith(instance.dockerId, ['mkdir', '-p', '/var/task/~st2/deps']);
       expect(execStub).to.be.calledWith(instance.dockerId, [
         'pip', 'install', '-I',
         'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common',
@@ -142,7 +149,7 @@ describe('index', () => {
     });
 
     it('should spin a docker container if one had not been started yet', async () => {
-      const execStub = sinon.stub().resolves();
+      const execStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           execDocker: execStub
@@ -160,7 +167,7 @@ describe('index', () => {
 
   describe('#copyPackDeps', () => {
     it('should install pack deps', async () => {
-      const execStub = sinon.stub().resolves();
+      const execStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           execDocker: execStub
@@ -184,7 +191,7 @@ describe('index', () => {
     });
 
     it('should spin a docker container if one had not been started yet', async () => {
-      const execStub = sinon.stub().resolves();
+      const execStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           execDocker: execStub
@@ -337,7 +344,7 @@ describe('index', () => {
 
   describe('#pullDockerImage', () => {
     it('should pull the image', async () => {
-      const pullStub = sinon.stub().resolves();
+      const pullStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           pullDockerImage: pullStub
@@ -354,7 +361,7 @@ describe('index', () => {
 
   describe('#startDocker', () => {
     it('should start the container', async () => {
-      const startStub = sinon.stub().resolves(Promise.resolve('deadbeef'));
+      const startStub = makePromiseStub(Promise.resolve('deadbeef'));
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           startDocker: startStub
@@ -370,7 +377,7 @@ describe('index', () => {
     });
 
     it('should fail if docker container is already spinning', async () => {
-      const startStub = sinon.stub().resolves(Promise.resolve('deadbeef'));
+      const startStub = makePromiseStub(Promise.resolve('deadbeef'));
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           startDocker: startStub
@@ -388,7 +395,7 @@ describe('index', () => {
 
   describe('#stopDocker', () => {
     it('should stop the container', async () => {
-      const stopStub = sinon.stub().resolves();
+      const stopStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           stopDocker: stopStub
@@ -403,7 +410,7 @@ describe('index', () => {
     });
 
     it('should fail if no docker container is set', async () => {
-      const startStub = sinon.stub().resolves(Promise.resolve('deadbeef'));
+      const startStub = makePromiseStub(Promise.resolve('deadbeef'));
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           startDocker: startStub
@@ -418,7 +425,7 @@ describe('index', () => {
 
   describe('#execDocker', () => {
     it('should execute a command in the container', async () => {
-      const execStub = sinon.stub().resolves();
+      const execStub = makePromiseStub();
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           execDocker: execStub
@@ -436,7 +443,7 @@ describe('index', () => {
 
   describe('#runDocker', () => {
     it('should execute a function in the container', async () => {
-      const runStub = sinon.stub().resolves({ result: 'some' });
+      const runStub = makePromiseStub({ result: 'some' });
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           runDocker: runStub
@@ -485,7 +492,7 @@ describe('index', () => {
     });
 
     it('should read input data from stdio', async () => {
-      const runStub = sinon.stub().resolves({ result: 'some' });
+      const runStub = makePromiseStub({ result: 'some' });
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           runDocker: runStub
@@ -533,7 +540,7 @@ describe('index', () => {
     });
 
     it('should read input data from file', async () => {
-      const runStub = sinon.stub().resolves({ result: 'some' });
+      const runStub = makePromiseStub({ result: 'some' });
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           runDocker: runStub
@@ -589,7 +596,7 @@ describe('index', () => {
     });
 
     it('should reject if file does not exist', async () => {
-      const runStub = sinon.stub().resolves({ result: 'some' });
+      const runStub = makePromiseStub({ result: 'some' });
       const StackStorm = mock('./index.js', {
         './lib/docker': {
           runDocker: runStub

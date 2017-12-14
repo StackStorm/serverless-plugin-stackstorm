@@ -1,0 +1,36 @@
+{
+    "metadata": {
+        "generated_ts": 1512633599,
+        "hash": "72c7655b059b387f074ea0a868b54a2f"
+    },
+    "packs": {
+        "test": {
+            "author": "st2-dev",
+            "content": {
+                "actions": {
+                    "count": 2,
+                    "resources": [
+                        "list_vms",
+                        "parse"
+                    ]
+                },
+                "tests": {
+                    "count": 1,
+                    "resources": [
+                        "test_action_parse_xml.py"
+                    ]
+                }
+            },
+            "description": "st2 pack to test package management pipeline",
+            "email": "info@stackstorm.com",
+            "keywords": [
+                "some",
+                "search",
+                "terms"
+            ],
+            "name": "test",
+            "repo_url": "https://github.com/StackStorm-Exchange/stackstorm-test",
+            "version": "0.4.0"
+        }
+    }
+}

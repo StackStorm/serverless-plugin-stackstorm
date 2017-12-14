@@ -6,6 +6,7 @@
   "scripts": {
     "lint": "eslint .",
     "test": "mocha \"./{,!(node_modules)/**/}*.test.js\"",
+    "integration": "mocha \"tests/e2e/*.js\"",
     "cover": "nyc --reporter=lcovonly npm test"
   },
   "engines": {
@@ -32,7 +33,10 @@
     "mocha": "4.0.1",
     "nyc": "11.3.0",
     "proxyquire": "1.8.0",
+    "serve": "6.4.1",
+    "serverless": "1.24.1",
     "sinon": "4.0.2",
-    "sinon-chai": "2.14.0"
+    "sinon-chai": "2.14.0",
+    "tmp": "0.0.33"
   }
 }

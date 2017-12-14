@@ -9,11 +9,20 @@ workflows:
 
 jobs:
   javascript:
+    machine: true
     working_directory: ~/serverless-plugin-stackstorm
-    docker:
-      - image: circleci/node:8.4.0
     steps:
       - checkout
+      - run:
+          name: Switch to supported version of Node
+          command: |
+            export NVM_DIR="/opt/circleci/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            nvm install 8.4.0 && nvm alias default 8.4.0
+
+            # Each step uses the same `$BASH_ENV`, so need to modify it
+            echo 'export NVM_DIR="/opt/circleci/.nvm"' >> $BASH_ENV
+            echo "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"" >> $BASH_ENV
       - restore_cache:
           key: dependency-cache-{{ checksum "package.json" }}
       - run:
@@ -27,8 +36,14 @@ jobs:
           name: Lint
           command: npm run lint
       - run:
-          name: Run tests
+          name: Run unit tests
           command: npm test
+      - run:
+          name: Build test container
+          command: docker build -t slstest tests/e2e/service/container
+      - run:
+          name: Run integration tests
+          command: npm run integration
 
   python:
     working_directory: ~/serverless-plugin-stackstorm

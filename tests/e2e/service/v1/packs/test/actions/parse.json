@@ -1,0 +1,14 @@
+{
+    "description": "Parse XML string and return JSON object.",
+    "enabled": true,
+    "entry_point": "parse_xml.py",
+    "name": "parse",
+    "parameters": {
+        "data": {
+            "description": "XML string to parse.",
+            "required": true,
+            "type": "string"
+        }
+    },
+    "runner_type": "python-script"
+}
