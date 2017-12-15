@@ -7,6 +7,8 @@ const sinonChai = require('sinon-chai');
 const serve = require('serve');
 const tmp = require('tmp');
 const fs = require('fs-extra');
+const axios = require('axios');
+const promiseRetry = require('promise-retry');
 
 chai.use(chaiAsPromised);
 chai.use(sinonChai);
@@ -58,8 +60,12 @@ describe('StackStorm Serverless Plugin E2E', () => {
   let server, tmpdir, workdir;
 
   before(() => {
+    const port = 45032;
     workdir = process.cwd();
-    server = serve(path.join(__dirname, './service'), { port: 45032, clipless: true, silent: true });
+    server = serve(path.join(__dirname, './service'), { port, clipless: true, silent: true });
+
+    const request = axios.create({ baseURL: `http://localhost:${port}/` });
+    return promiseRetry(retry => request.get('/').catch(retry));
   });
 
   beforeEach(() => {
@@ -78,6 +84,20 @@ describe('StackStorm Serverless Plugin E2E', () => {
         '\u001b[33m\u001b[4mParameters\u001b[24m\u001b[39m',
         '  \u001b[33mcredentials [string] (required)\u001b[39m  Name of the credentials set (as defined in the config) to use.',
         '\u001b[2mThe action does not require config parameters\u001b[22m'
+      ].join('\n'));
+    }).timeout(0);
+
+    it('should return pack info', async () => {
+      const sls = SLS(['stackstorm', 'info', '--pack', 'test'], { servicePath: './service' });
+
+      await sls.init();
+      await sls.run();
+
+      expect(sls.cli.consoleLog).to.be.calledWith([
+        '\u001b[33mtest\u001b[39m \u001b[2m..........................\u001b[22m st2 pack to test package management pipeline',
+        '\u001b[33m\u001b[4mActions\u001b[24m\u001b[39m',
+        '  list_vms',
+        '  parse'
       ].join('\n'));
     }).timeout(0);
   });
