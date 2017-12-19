@@ -296,8 +296,11 @@ class StackstormPlugin {
 
   async clonePack(packName) {
     const index = await this.getIndex();
-    const packMeta = index.packs[packName];
     const debug = (process.env['DEBUG'] !== undefined);
+    const packMeta = index.packs[packName];
+    if (!packMeta) {
+      throw new this.serverless.classes.Error(`Pack "${packName}" not found.`);
+    }
 
     const localPath = `${MAGIC_FOLDER}/packs/${packMeta.ref || packMeta.name}`;
     try {
