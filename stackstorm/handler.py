@@ -106,11 +106,14 @@ ACTIONS = _load_actions()
 CONFIG_SCHEMAS = _load_config_schemas()
 
 
-def base(event, context, passthrough=False, debug=False):
+def base(event, context, passthrough=False):
     # Set up logging
-    # TODO: Allow log level to be specified by the user, default to DEBUG when
-    # --verbose is used
     logger = logging.getLogger()
+
+    # Read DEBUG value from the environment variable
+    debug = os.environ.get('ST2_DEBUG', False)
+    if str(debug).lower() in ['true', '1']:
+        debug = True
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -200,6 +203,10 @@ def base(event, context, passthrough=False, debug=False):
                 })
         else:
             live_params = event
+
+        if debug and 'log_level' not in live_params:
+            # Set log_level runner parameter
+            live_params['log_level'] = 'DEBUG'
 
         runner_params, action_params = param_utils.render_final_params(
             runner_parameters=runnertype_db.runner_parameters,

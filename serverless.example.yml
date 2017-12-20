@@ -19,8 +19,11 @@ functions:
 #        Optional: use token for private repos or actions requiring authorization
 #        token: ${env:GITHUB_TOKEN}
 
-    envoronment:
+    environment:
       ${file(env.yml):github}
+      # Uncomment the following line to enable debug mode (log level will be set
+      # to debug and more debug related information will be logged)
+      # ST2_DEBUG: "true"
 
     events:
       - http:
