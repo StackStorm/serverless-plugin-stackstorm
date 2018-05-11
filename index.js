@@ -278,7 +278,7 @@ class StackstormPlugin {
     await this.execDocker([
       '/bin/bash', '-c',
       `PYTHONPATH=$PYTHONPATH:${pythonpath} ` +
-      `pip --isolated install -r ${requirements} --prefix ${prefix} --src ${prefix}/src`
+      `pip --isolated install --ignore-installed -r ${requirements} --prefix ${prefix} --src ${prefix}/src`
     ], { noPull });
   }
 

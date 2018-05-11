@@ -185,7 +185,7 @@ describe('index', () => {
       expect(execStub).to.be.calledWith(instance.dockerId, [
         '/bin/bash', '-c',
         'PYTHONPATH=$PYTHONPATH:/var/task/~st2/virtualenvs/dummypack/lib/python2.7/site-packages ' +
-        'pip --isolated install -r /var/task/~st2/packs/dummypack/requirements.txt ' +
+        'pip --isolated install --ignore-installed -r /var/task/~st2/packs/dummypack/requirements.txt ' +
         '--prefix /var/task/~st2/virtualenvs/dummypack --src /var/task/~st2/virtualenvs/dummypack/src'
       ]);
     });

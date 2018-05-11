@@ -135,16 +135,19 @@ def base(event, context, passthrough=False):
     # #example-lambda-proxy-event-default
     # for details
     is_event_body_string = (isinstance(event.get('body'), basestring) is True)
-    content_type = event.get('headers', {}).get('Content-Type', '').lower()
+    content_type = event.get('headers', {}).get('content-type', '').lower()
 
     if is_event_body_string:
         if content_type == 'application/json':
             try:
                 event['body'] = json.loads(event['body'])
-            except Exception:
-                LOG.warn('`event` has `body` which is not JSON')
+            except Exception as e:
+                LOG.warn('`event` has `body` which is not JSON: %s', str(e.message))
         elif content_type == 'application/x-www-form-urlencoded':
-            event['body'] = dict(parse_qsl(['body'], keep_blank_values=True))
+            try:
+                event['body'] = dict(parse_qsl(['body'], keep_blank_values=True))
+            except Exception as e:
+                LOG.warn('`event` has `body` which is not `%s`: %s', content_type, str(e.message))
         else:
             LOG.warn('Unsupported event content type: %s' % (content_type))
 
