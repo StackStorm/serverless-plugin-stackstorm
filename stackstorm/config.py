@@ -69,9 +69,6 @@ def _register_action_runner_opts():
                     default=False,
                     help='How partial success of actions run on multiple nodes ' +
                          'should be treated.'),
-        cfg.IntOpt('max_parallel_actions', default=50,
-                   help='Max number of parallel remote SSH actions that should be run.  ' +
-                        'Works only with Paramiko SSH runner.'),
         cfg.BoolOpt('use_ssh_config', default=False,
                     help='Use the .ssh/config file. Useful to override ports etc.'),
         cfg.StrOpt('ssh_config_file_path',
