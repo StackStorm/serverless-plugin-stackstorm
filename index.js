@@ -241,9 +241,9 @@ class StackstormPlugin {
     this.index_url = stackstorm && stackstorm.index || urljoin(this.index_root, 'index.json');
 
     this.st2common_pkg = stackstorm && stackstorm.st2common_pkg
-      || 'git+https://github.com/stackstorm/st2.git@007ad47bc1ea6ecd6254076b1d4aed2e558b87db#egg=st2common&subdirectory=st2common';
+      || 'git+https://github.com/stackstorm/st2.git@v2.8.1#egg=st2common&subdirectory=st2common';
     this.python_runner_pkg = stackstorm && stackstorm.python_runner_pkg
-      || 'git+https://github.com/StackStorm/st2.git@007ad47bc1ea6ecd6254076b1d4aed2e558b87db#egg=python_runner&subdirectory=contrib/runners/python_runner';
+      || 'git+https://github.com/StackStorm/st2.git@v2.8.1#egg=stackstorm-runner-python&subdirectory=contrib/runners/python_runner';
   }
 
   async getIndex() {
