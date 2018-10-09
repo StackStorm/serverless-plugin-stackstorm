@@ -21,7 +21,7 @@
     "fs-extra": "4.0.2",
     "get-stdin": "5.0.1",
     "js-yaml": "3.10.0",
-    "lodash": "4.17.4",
+    "lodash": "^4.17.11",
     "nopy": "0.2.3",
     "simple-git": "^1.84.0",
     "url-join": "2.0.2"
@@ -32,11 +32,11 @@
     "eslint": "4.9.0",
     "eslint-plugin-async-await": "0.0.0",
     "mocha": "4.0.1",
-    "nyc": "11.3.0",
+    "nyc": "^13.1.0",
     "promise-retry": "1.1.1",
     "proxyquire": "1.8.0",
     "serve": "7.0.0",
-    "serverless": "1.24.1",
+    "serverless": "^1.32.0",
     "sinon": "4.0.2",
     "sinon-chai": "2.14.0",
     "tmp": "0.0.33"
