@@ -9,6 +9,7 @@
     "integration": "mocha \"tests/e2e/*.js\"",
     "cover": "nyc --reporter=lcovonly npm test"
   },
+  "repository": "stackstorm/serverless-plugin-stackstorm",
   "engines": {
     "node": "^8.4.0"
   },
