@@ -37,7 +37,7 @@ custom:
     runImage: 'lambci/lambda:python2.7'
     buildImage: 'lambci/lambda:build-python2.7'
     indexRoot: 'https://index.stackstorm.org/v1/'
-    st2common_pkg: 'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common'
+    st2common_pkg: 'git+https://github.com/stackstorm/st2.git@v2.8.1#egg=st2common&subdirectory=st2common'
     python_runner_pkg: 'git+https://github.com/StackStorm/st2.git#egg=python_runner&subdirectory=contrib/runners/python_runner'
 
 plugins:

@@ -619,7 +619,7 @@ class StackstormPlugin {
       this.serverless.cli.log('Installing StackStorm adapter dependencies...');
       await nopy.spawnPython([
         '-m', 'pip', 'install',
-        'git+https://github.com/stackstorm/st2.git#egg=st2common&subdirectory=st2common',
+        'git+https://github.com/stackstorm/st2.git@v2.8.1#egg=st2common&subdirectory=st2common',
         '-I',
         '--prefix', `${MAGIC_FOLDER}/deps`
       ], {

@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-stackstorm",
-  "version": "1.2.0-0",
+  "version": "1.2.1-0",
   "description": "Running StackStorm actions serverlessly",
   "main": "index.js",
   "scripts": {
@@ -9,6 +9,7 @@
     "integration": "mocha \"tests/e2e/*.js\"",
     "cover": "nyc --reporter=lcovonly npm test"
   },
+  "repository": "stackstorm/serverless-plugin-stackstorm",
   "engines": {
     "node": "^8.4.0"
   },
@@ -20,7 +21,7 @@
     "fs-extra": "4.0.2",
     "get-stdin": "5.0.1",
     "js-yaml": "3.10.0",
-    "lodash": "4.17.4",
+    "lodash": "4.17.11",
     "nopy": "0.2.3",
     "simple-git": "^1.84.0",
     "url-join": "2.0.2"
@@ -28,14 +29,16 @@
   "devDependencies": {
     "chai": "4.1.2",
     "chai-as-promised": "7.1.1",
+    "deep-extend": "^0.5.1",
     "eslint": "4.9.0",
     "eslint-plugin-async-await": "0.0.0",
+    "https-proxy-agent": "^2.2.0",
     "mocha": "4.0.1",
     "nyc": "11.3.0",
     "promise-retry": "1.1.1",
     "proxyquire": "1.8.0",
-    "serve": "6.4.1",
-    "serverless": "1.24.1",
+    "serve": "6.5.2",
+    "serverless": "1.32.0",
     "sinon": "4.0.2",
     "sinon-chai": "2.14.0",
     "tmp": "0.0.33"
