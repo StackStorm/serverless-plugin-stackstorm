@@ -15,8 +15,8 @@
   "author": "Kirill Enykeev <enykeev@stackstorm.com>",
   "license": "Apache-2.0",
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/StackStorm/serverless-plugin-stackstorm.git"
+    "type": "git",
+    "url": "https://github.com/StackStorm/serverless-plugin-stackstorm.git"
   },
   "dependencies": {
     "axios": "0.16.2",
@@ -26,6 +26,7 @@
     "js-yaml": "3.10.0",
     "lodash": "4.17.11",
     "nopy": "0.2.3",
+    "rc": "^1.2.8",
     "simple-git": "^1.84.0",
     "url-join": "2.0.2"
   },
