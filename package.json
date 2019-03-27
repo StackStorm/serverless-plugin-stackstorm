@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-stackstorm",
-  "version": "1.2.0-0",
+  "version": "1.2.1-0",
   "description": "Running StackStorm actions serverlessly",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,10 @@
   "engines": {
     "node": "^8.4.0"
   },
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/StackStorm/serverless-plugin-stackstorm.git"
+  },
   "author": "Kirill Enykeev <enykeev@stackstorm.com>",
   "license": "Apache-2.0",
   "dependencies": {
@@ -20,7 +24,7 @@
     "fs-extra": "4.0.2",
     "get-stdin": "5.0.1",
     "js-yaml": "3.10.0",
-    "lodash": "4.17.4",
+    "lodash": "4.17.11",
     "nopy": "0.2.3",
     "simple-git": "^1.84.0",
     "url-join": "2.0.2"
