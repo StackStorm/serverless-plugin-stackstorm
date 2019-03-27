@@ -38,7 +38,7 @@
     "nyc": "11.3.0",
     "promise-retry": "1.1.1",
     "proxyquire": "1.8.0",
-    "serve": "6.4.1",
+    "serve": "6.5.8",
     "serverless": "1.39.1",
     "sinon": "4.0.2",
     "sinon-chai": "2.14.0",
