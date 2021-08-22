@@ -104,7 +104,8 @@ class StackstormPlugin {
                 options: {
                   dockerId: {
                     usage: 'λ docker container ID',
-                    required: true
+                    required: true,
+                    type: 'string'
                   }
                 }
               },
@@ -116,12 +117,14 @@ class StackstormPlugin {
                 options: {
                   dockerId: {
                     usage: 'λ docker container ID',
-                    required: true
+                    required: true,
+                    type: 'string'
                   },
                   cmd: {
                     usage: 'command to execute',
                     shortcut: 'c',
-                    required: true
+                    required: true,
+                    type: 'string'
                   }
                 }
               },
@@ -134,23 +137,28 @@ class StackstormPlugin {
                   function: {
                     usage: 'Name of the function',
                     shortcut: 'f',
-                    required: true
+                    required: true,
+                    type: 'string'
                   },
                   path: {
                     usage: 'Path to JSON or YAML file holding input data',
                     shortcut: 'p',
+                    type: 'string'
                   },
                   data: {
                     usage: 'Input data',
                     shortcut: 'd',
-                    required: true
+                    required: true,
+                    type: 'string'
                   },
                   passthrough: {
-                    usage: 'Return incoming event as a result instead of running StackStorm action'
+                    usage: 'Return incoming event as a result instead of running StackStorm action',
+                    type: 'boolean'
                   },
                   verbose: {
                     usage: 'Print all the transformation steps',
-                    shortcut: 'v'
+                    shortcut: 'v',
+                    type: 'boolean'
                   }
                 }
               }
@@ -171,10 +179,12 @@ class StackstormPlugin {
                 ],
                 options: {
                   dockerId: {
-                    usage: 'λ docker container ID'
+                    usage: 'λ docker container ID',
+                    type: 'string'
                   },
                   noPull: {
-                    usage: 'Do not pull the docker image'
+                    usage: 'Do not pull the docker image',
+                    type: 'boolean'
                   }
                 }
               },
@@ -186,7 +196,8 @@ class StackstormPlugin {
                 options: {
                   pack: {
                     usage: 'Install specific StackStorm pack',
-                    shortcut: 'p'
+                    shortcut: 'p',
+                    type: 'string'
                   }
                 }
               },
@@ -197,14 +208,17 @@ class StackstormPlugin {
                 ],
                 options: {
                   dockerId: {
-                    usage: 'λ docker container ID'
+                    usage: 'λ docker container ID',
+                    type: 'string'
                   },
                   noPull: {
-                    usage: 'Do not pull the docker image'
+                    usage: 'Do not pull the docker image',
+                    type: 'boolean'
                   },
                   pack: {
                     usage: 'Install dependencies for specific pack.',
-                    shortcut: 'p'
+                    shortcut: 'p',
+                    type: 'string'
                   }
                 }
               }
@@ -217,10 +231,12 @@ class StackstormPlugin {
             ],
             options: {
               action: {
-                usage: 'Action name'
+                usage: 'Action name',
+                type: 'string'
               },
               pack: {
-                usage: 'Pack name'
+                usage: 'Pack name',
+                type: 'string'
               }
             }
           }
